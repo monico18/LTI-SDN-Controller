@@ -1,2 +1,2 @@
 # LTI-SDN-Controller
-A SDN Controller for mikrotik devices
+A SDN Controller for mikrotik devices using python
