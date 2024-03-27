@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ui version="5.0">
+<ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
   <property name="geometry">
@@ -231,7 +231,7 @@
             <colorrole role="Button">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -240,7 +240,7 @@
             <colorrole role="Base">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -249,7 +249,7 @@
             <colorrole role="Window">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -278,7 +278,7 @@
             <colorrole role="Button">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -287,7 +287,7 @@
             <colorrole role="Base">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -296,7 +296,7 @@
             <colorrole role="Window">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -325,7 +325,7 @@
             <colorrole role="Button">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -334,7 +334,7 @@
             <colorrole role="Base">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>
@@ -343,7 +343,7 @@
             <colorrole role="Window">
              <brush brushstyle="SolidPattern">
               <color alpha="255">
-               <red>255</red>
+               <red>85</red>
                <green>170</green>
                <blue>255</blue>
               </color>

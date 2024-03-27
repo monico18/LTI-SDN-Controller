@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ui version="5.0">
+<ui version="4.0">
  <class>LoginPage</class>
  <widget class="QMainWindow" name="LoginPage">
   <property name="geometry">
@@ -153,7 +153,7 @@
      </font>
     </property>
     <property name="focusPolicy">
-     <enum>Qt::NoFocus</enum>
+     <enum>Qt::StrongFocus</enum>
     </property>
     <property name="text">
      <string/>
@@ -162,7 +162,7 @@
      <enum>QLineEdit::Password</enum>
     </property>
    </widget>
-   <widget class="QLabel" name="label">
+   <widget class="QLabel" name="SDNControllerLabel">
     <property name="geometry">
      <rect>
       <x>310</x>
@@ -186,9 +186,9 @@
        <colorrole role="Button">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -258,18 +258,18 @@
        <colorrole role="Base">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
        <colorrole role="Window">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -323,9 +323,9 @@
        <colorrole role="Button">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -395,18 +395,18 @@
        <colorrole role="Base">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
        <colorrole role="Window">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -460,9 +460,9 @@
        <colorrole role="Button">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -532,18 +532,18 @@
        <colorrole role="Base">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
        <colorrole role="Window">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>255</red>
-          <green>255</green>
-          <blue>255</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -607,7 +607,7 @@
      <string>SDN Controller</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_2">
+   <widget class="QLabel" name="UsernameLabel">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -743,7 +743,7 @@
      <string>Username</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_3">
+   <widget class="QLabel" name="PasswordLabel">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -903,9 +903,9 @@
        <colorrole role="Button">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -930,18 +930,18 @@
        <colorrole role="Base">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
        <colorrole role="Window">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -968,9 +968,9 @@
        <colorrole role="Button">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -995,18 +995,18 @@
        <colorrole role="Base">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
        <colorrole role="Window">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -1033,9 +1033,9 @@
        <colorrole role="Button">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -1060,18 +1060,18 @@
        <colorrole role="Base">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
        <colorrole role="Window">
         <brush brushstyle="SolidPattern">
          <color alpha="255">
-          <red>0</red>
-          <green>0</green>
-          <blue>0</blue>
+          <red>45</red>
+          <green>45</green>
+          <blue>45</blue>
          </color>
         </brush>
        </colorrole>
@@ -1108,7 +1108,7 @@
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QLineEdit" name="password_2">
+   <widget class="QLineEdit" name="username">
     <property name="geometry">
      <rect>
       <x>270</x>
