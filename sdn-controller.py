@@ -37,7 +37,7 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
             # Change to a specific page in the stacked widget
             self.hide()
             self.main_window = MainWindow()
-            self.main_window.show()
+            self.main_window.showMaximized()
             self.stacked_widget.setCurrentIndex(1)
         else:
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid username or password.")
