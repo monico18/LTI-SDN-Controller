@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 from ui_main import Ui_MainWindow
-from SDNController import Ui_LoginPage
+from login import Ui_LoginPage
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -16,9 +16,19 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def login(self):
         # Add your login logic here
         # If login is successful:
-        self.hide()
-        self.main_window = MainWindow()
-        self.main_window.show()
+        username = self.username.text()
+        password = self.password.text()
+        
+        # Check if username and password are correct
+        if username == "admin" and password == "password":
+            print("Login successful!")
+            self.hide()
+            self.main_window = MainWindow()
+            self.main_window.show()
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Invalid username or password.")
+            print("Invalid username or password.")
+
 
 if __name__ == "__main__":
     import sys
