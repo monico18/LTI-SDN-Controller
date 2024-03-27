@@ -80,64 +80,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setSpacing(0)
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.frame_toggle = QtWidgets.QFrame(self.Top_Bar)
-        self.frame_toggle.setMaximumSize(QtCore.QSize(70, 40))
-        palette = QtGui.QPalette()
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Base, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Highlight, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Link, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Button, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Base, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Link, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Button, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Base, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(0, 120, 215))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Highlight, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 170, 255))
-        brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Link, brush)
-        self.frame_toggle.setPalette(palette)
-        self.frame_toggle.setStyleSheet("background-color: rgb(85, 170, 255);")
-        self.frame_toggle.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame_toggle.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frame_toggle.setObjectName("frame_toggle")
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.frame_toggle)
-        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_2.setSpacing(0)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.horizontalLayout.addWidget(self.frame_toggle)
         self.frame_top = QtWidgets.QFrame(self.Top_Bar)
         self.frame_top.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_top.setFrameShadow(QtWidgets.QFrame.Raised)
@@ -178,7 +120,7 @@ class Ui_MainWindow(object):
 "    border: 0px solid;\n"
 "}\n"
 "QPushButton:hover {\n"
-"    background-color: rgb(85, 170, 255);\n"
+"    background-color: rgb(135, 65, 255);\n"
 "}")
         self.btn_page_1.setObjectName("btn_page_1")
         self.verticalLayout_4.addWidget(self.btn_page_1)
@@ -190,7 +132,7 @@ class Ui_MainWindow(object):
 "    border: 0px solid;\n"
 "}\n"
 "QPushButton:hover {\n"
-"    background-color: rgb(85, 170, 255);\n"
+"    background-color: rgb(135, 65, 255);\n"
 "}")
         self.btn_page_2.setObjectName("btn_page_2")
         self.verticalLayout_4.addWidget(self.btn_page_2)
@@ -202,7 +144,7 @@ class Ui_MainWindow(object):
 "    border: 0px solid;\n"
 "}\n"
 "QPushButton:hover {\n"
-"    background-color: rgb(85, 170, 255);\n"
+"    background-color: rgb(135, 65, 255);\n"
 "}")
         self.btn_page_3.setObjectName("btn_page_3")
         self.verticalLayout_4.addWidget(self.btn_page_3)
