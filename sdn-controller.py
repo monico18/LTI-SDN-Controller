@@ -1,7 +1,10 @@
 from PyQt5 import QtWidgets
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
+import sys
 import requests
+from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
+
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -11,6 +14,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
         self.btn_page_2.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_2))
         self.btn_page_3.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_3))
+
+
+        self.btn_add.clicked.connect()
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):
@@ -45,17 +51,28 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
 
 
 if __name__ == "__main__":
-    import sys
+
+    engine = create_engine('sqlite:///sdn_controller.db', echo=True)
+
+    metadata = MetaData()
+
+    users = Table('Routers', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('username', String),
+    Column('password', String),
+    Column('ip_address', String),
+    Column('name', String)
+    )
+
+    metadata.create_all(engine)
+
     app = QtWidgets.QApplication(sys.argv)
     
-    # Create instances of the windows
     login_page = LoginPage()
     main_window = MainWindow()
 
-    # Pass the stacked widget reference from MainWindow to LoginPage
     login_page.set_stacked_widget(main_window.stackedWidget)
 
-    # Show the login page
     login_page.show()
 
     sys.exit(app.exec_())
