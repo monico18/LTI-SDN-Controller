@@ -20,6 +20,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.btn_add.clicked.connect(self.add_node)
 
+        self.routerTable.itemDoubleClicked.connect(self.handle_table_double_click)
+
+        self.refresh_table()
+
+
     def add_node(self):
         username = self.lineEdit.text()
         password = self.lineEdit_2.text()
@@ -48,11 +53,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for row, node in enumerate(self.get_nodes()):
                 self.routerTable.insertRow(row)
                 self.routerTable.setItem(row, 0, QtWidgets.QTableWidgetItem(node[4])) 
-                self.routerTable.setItem(row, 1, QtWidgets.QTableWidgetItem(node[3])) 
-
-                button = QtWidgets.QPushButton("Action", self)
-                button.clicked.connect(lambda checked, r=row: self.handle_button_click(r))
-                self.routerTable.setCellWidget(row, 2, button)
+                self.routerTable.setItem(row, 1, QtWidgets.QTableWidgetItem(node[3]))
 
         except Exception as e:
             print(f"Error in refresh_table: {e}")
@@ -64,10 +65,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             nodes = result.fetchall()
         return nodes
 
-    def handle_button_click(self, row):
-        node = self.get_nodes()[row]
+    def handle_table_double_click(self, item):
+        if item is not None:
+            row = item.row()
+            node = self.get_nodes()[row]
 
-        print(f"Button clicked for node: {node['name']}")
+            # Switch to Page2 and populate with node information
+            self.page_2.label_name.setText(f"Name: {node[4]}")
+            self.page_2.label_ip.setText(f"IP Address: {node[3]}")
+            self.page_2.label_username.setText(f"Username: {node[2]}")
+
+            self.stackedWidget.setCurrentWidget(self.page_2)
+
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):
