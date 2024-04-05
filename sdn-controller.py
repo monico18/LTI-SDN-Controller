@@ -2,18 +2,17 @@ from PyQt5 import QtWidgets
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
 import sys
-import requests
 import atexit
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self, nodes):
+    def __init__(self, engine, nodes):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
+        self.engine = engine  # Assign the engine to the instance attribute
         self.nodes = nodes
-
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
         self.btn_page_2.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_2))
@@ -28,7 +27,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         name = self.lineEdit_4.text()
 
         ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
-        engine.execute(ins)
+        with self.engine.connect() as connection:
+            connection.execute(ins)
+            connection.commit()
 
         print("Node added successfully!")
 
@@ -38,27 +39,36 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.lineEdit_4.clear()
 
         self.refresh_table()
-        pass
 
     def refresh_table(self):
-        # Clear the table
-        self.routerTable.setRowCount(0)
+        try:
+            # Clear the table
+            self.routerTable.setRowCount(0)
+            
+            for row, node in enumerate(self.get_nodes()):
+                self.routerTable.insertRow(row)
+                self.routerTable.setItem(row, 0, QtWidgets.QTableWidgetItem(node[4])) 
+                self.routerTable.setItem(row, 1, QtWidgets.QTableWidgetItem(node[3])) 
 
-        # Add items to the table
-        for node in self.get_nodes():
-            row = self.routerTable.rowCount()
-            self.routerTable.insertRow(row)
-            self.routerTable.setItem(row, 0, QtWidgets.QTableWidgetItem(node['name']))
-            self.routerTable.setItem(row, 1, QtWidgets.QTableWidgetItem(node['ip_address']))
-        pass
+                button = QtWidgets.QPushButton("Action", self)
+                button.clicked.connect(lambda checked, r=row: self.handle_button_click(r))
+                self.routerTable.setCellWidget(row, 2, button)
+
+        except Exception as e:
+            print(f"Error in refresh_table: {e}")
 
     def get_nodes(self):
-        global nodes
         s = self.nodes.select().where(self.nodes.c.id > 0)
-        result = engine.execute(s)
-        nodes = result.fetchall()
+        with self.engine.connect() as connection:
+            result = connection.execute(s)
+            nodes = result.fetchall()
         return nodes
-    
+
+    def handle_button_click(self, row):
+        node = self.get_nodes()[row]
+
+        print(f"Button clicked for node: {node['name']}")
+
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):
         super(LoginPage, self).__init__()
@@ -73,53 +83,50 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
         self.stacked_widget = stacked_widget
 
     def login(self):
-        # Add your login logic here
-        # If login is successful:
         username = self.username.text()
         password = self.password.text()
-        
+
         # Check if username and password are correct
         if username == "admin" and password == "password":
             print("Login successful!")
             # Change to a specific page in the stacked widget
             self.hide()
-            self.main_window = MainWindow(nodes)
+            self.main_window = MainWindow(engine, nodes)
             self.main_window.showMaximized()
             self.stacked_widget.setCurrentIndex(1)
         else:
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid username or password.")
             print("Invalid username or password.")
 
-def clear_db():
+def clear_db(engine, nodes):
     # Create a delete statement that deletes all rows from the nodes table
     del_stmt = delete(nodes)
 
-    # Execute the delete statement
-    engine.execute(del_stmt)
+    with engine.connect() as connection:
+        connection.execute(del_stmt)
+        connection.commit()
 
 if __name__ == "__main__":
-
     engine = create_engine('sqlite:///sdn_controller.db', echo=True)
-
     metadata = MetaData()
 
     nodes = Table('Nodes', metadata,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('username', String),
-    Column('password', String),
-    Column('ip_address', String),
-    Column('name', String)
-    )
+                  Column('id', Integer, primary_key=True, autoincrement=True),
+                  Column('username', String),
+                  Column('password', String),
+                  Column('ip_address', String),
+                  Column('name', String)
+                  )
 
     metadata.create_all(engine)
 
     app = QtWidgets.QApplication(sys.argv)
-    clear_db()
+    clear_db(engine, nodes)
     login_page = LoginPage()
-    main_window = MainWindow(nodes)
+    main_window = MainWindow(engine, nodes)
 
     login_page.set_stacked_widget(main_window.stackedWidget)
 
     login_page.show()
-    atexit.register(clear_db)
+    atexit.register(clear_db,engine,nodes)  # Register clear_db with engine and nodes arguments
     sys.exit(app.exec_())
