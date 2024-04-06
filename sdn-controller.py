@@ -11,19 +11,37 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
-        self.engine = engine  # Assign the engine to the instance attribute
+        self.engine = engine 
         self.nodes = nodes
+        self.item_double_clicked = False
+        self.selected_node = None
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
         self.btn_page_2.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_2))
         self.btn_page_3.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_3))
+        self.btn_page_4.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_4))
+        self.btn_page_5.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_5))
+        self.btn_page_6.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_6))
+        self.btn_page_7.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_7))
+        self.btn_page_8.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_8))
+
+
+
+
 
         self.btn_add.clicked.connect(self.add_node)
 
         self.routerTable.itemDoubleClicked.connect(self.handle_table_double_click)
 
-        self.refresh_table()
+        self.btn_page_2.setEnabled(False)
+        self.btn_page_3.setEnabled(False)
+        self.btn_page_4.setEnabled(False)
+        self.btn_page_5.setEnabled(False)
+        self.btn_page_6.setEnabled(False)
+        self.btn_page_7.setEnabled(False)
+        self.btn_page_8.setEnabled(False)
 
+        self.refresh_table()
 
     def add_node(self):
         username = self.lineEdit.text()
@@ -47,13 +65,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def refresh_table(self):
         try:
-            # Clear the table
             self.routerTable.setRowCount(0)
             
             for row, node in enumerate(self.get_nodes()):
                 self.routerTable.insertRow(row)
                 self.routerTable.setItem(row, 0, QtWidgets.QTableWidgetItem(node[4])) 
                 self.routerTable.setItem(row, 1, QtWidgets.QTableWidgetItem(node[3]))
+            self.routerTable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+            self.routerTable.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
 
         except Exception as e:
             print(f"Error in refresh_table: {e}")
@@ -67,16 +86,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def handle_table_double_click(self, item):
         if item is not None:
+            self.item_double_clicked = True
+            self.update_button_status()
             row = item.row()
             node = self.get_nodes()[row]
+            self.selected_node = self.get_nodes()[row] 
 
-            # Switch to Page2 and populate with node information
-            self.page_2.label_name.setText(f"Name: {node[4]}")
-            self.page_2.label_ip.setText(f"IP Address: {node[3]}")
-            self.page_2.label_username.setText(f"Username: {node[2]}")
+            #self.page_2.label_name.setText(f"Name: {self.selected_node[4]}")
+            #self.page_2.label_ip.setText(f"IP Address: {self.selected_node[3]}")
+            #self.page_2.label_username.setText(f"Username: {self.selected_node[2]}")
 
             self.stackedWidget.setCurrentWidget(self.page_2)
 
+    def update_button_status(self):
+            # Enable buttons if an item is double-clicked, otherwise disable them
+            self.btn_page_2.setEnabled(self.item_double_clicked)
+            self.btn_page_3.setEnabled(self.item_double_clicked)
+            self.btn_page_4.setEnabled(self.item_double_clicked)
+            self.btn_page_5.setEnabled(self.item_double_clicked)
+            self.btn_page_6.setEnabled(self.item_double_clicked)
+            self.btn_page_7.setEnabled(self.item_double_clicked)
+            self.btn_page_8.setEnabled(self.item_double_clicked)
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):
@@ -96,7 +126,7 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
         password = self.password.text()
 
         # Check if username and password are correct
-        if username == "admin" and password == "password":
+        if username == "123" and password == "123":
             print("Login successful!")
             # Change to a specific page in the stacked widget
             self.hide()
@@ -108,7 +138,7 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
             print("Invalid username or password.")
 
 def clear_db(engine, nodes):
-    # Create a delete statement that deletes all rows from the nodes table
+
     del_stmt = delete(nodes)
 
     with engine.connect() as connection:
