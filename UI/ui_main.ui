@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1243</width>
-    <height>854</height>
+    <width>1168</width>
+    <height>723</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -1434,7 +1434,7 @@
              <enum>Qt::LeftToRight</enum>
             </property>
             <property name="currentIndex">
-             <number>2</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="page_1">
              <property name="enabled">
@@ -3973,7 +3973,7 @@
                  </palette>
                 </property>
                 <property name="title">
-                 <string>Wireless Security Policies</string>
+                 <string>Dashboard</string>
                 </property>
                </widget>
               </item>
@@ -4110,7 +4110,7 @@
                 <property name="title">
                  <string>Wireless Networks and Security Policies</string>
                 </property>
-                <widget class="QPushButton" name="btn_bridge_2">
+                <widget class="QPushButton" name="btn_wireless_networks">
                  <property name="geometry">
                   <rect>
                    <x>40</x>
@@ -4241,7 +4241,7 @@
                   <string>Wireless Networks</string>
                  </property>
                 </widget>
-                <widget class="QPushButton" name="btn_bridge_3">
+                <widget class="QPushButton" name="btn_security_policies">
                  <property name="geometry">
                   <rect>
                    <x>240</x>
@@ -4372,7 +4372,7 @@
                   <string>Security Policies</string>
                  </property>
                 </widget>
-                <widget class="QPushButton" name="btn_bridge_4">
+                <widget class="QPushButton" name="btn_add_wireless">
                  <property name="geometry">
                   <rect>
                    <x>610</x>
@@ -5982,7 +5982,7 @@
                   <string>All</string>
                  </property>
                 </widget>
-                <widget class="QPushButton" name="btn_add_2">
+                <widget class="QPushButton" name="btn_add_bridge">
                  <property name="geometry">
                   <rect>
                    <x>410</x>
