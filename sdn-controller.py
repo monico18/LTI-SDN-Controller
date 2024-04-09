@@ -1,12 +1,14 @@
 from PyQt5 import QtWidgets
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
+from dhcp_config import Ui_DhcpConfig
 import sys
 import atexit
 import requests
 from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
 from sqlalchemy.orm import sessionmaker
+from librouteros import connect
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -43,8 +45,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_7.setEnabled(False)
         self.btn_page_8.setEnabled(False)
 
+        self.btn_add_dhcp.clicked.connect(self.open_dhcp_config_page) 
+        self.dhcp_config_page = None
+
 
         self.refresh_table()
+
+    def open_dhcp_config_page(self):
+        if not self.dhcp_config_page:  
+            self.dhcp_config_page = DhcpPage() 
+            self.dhcp_config_page.show()  
+        else:
+            self.dhcp_config_page.show()
 
     def handle_table_item_clicked(self, item):
         row = item.row()
@@ -126,6 +138,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         enable_buttons = self.selected_node is not None
         for button in page_buttons:
             button.setEnabled(enable_buttons)
+
+class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
+     def __init__(self):
+        super(DhcpPage, self).__init__()
+        self.setupUi(self)
 
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
