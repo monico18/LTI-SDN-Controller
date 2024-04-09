@@ -16,8 +16,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.engine = engine 
         self.nodes = nodes
-        self.item_double_clicked = False
-        self.selected_node = None
+        self.selected_node = []
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
         self.btn_page_2.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_2))
@@ -30,8 +29,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
         self.btn_add.clicked.connect(self.add_node)
+        self.btn_config_selected_nodes.clicked.connect(self.configure_selected_nodes)
 
-        self.routerTable.itemDoubleClicked.connect(self.handle_table_double_click)
+        self.update_button_status()
+
+        self.routerTable.itemClicked.connect(self.handle_table_item_clicked)
 
         self.btn_page_2.setEnabled(False)
         self.btn_page_3.setEnabled(False)
@@ -41,7 +43,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_7.setEnabled(False)
         self.btn_page_8.setEnabled(False)
 
+
         self.refresh_table()
+
+    def handle_table_item_clicked(self, item):
+        row = item.row()
+        self.selected_node = self.get_nodes()[row]
+
 
     def add_node(self):
         # Create a session
@@ -79,6 +87,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             return None
 
+    def configure_selected_nodes(self):
+        selected_nodes_table = self.routerTable.selectedIndexes()
+        if self.selected_node:
+            self.selected_nodes_text.setText("Selected Nodes:")
+            for index in selected_nodes_table:
+                current_text= self.selected_nodes_text.text()
+                self.selected_nodes_text.setText(f"{current_text}\n {index}")
+            print(self.selected_node+"\n")
+            self.stackedWidget.setCurrentWidget(self.page_2)
+            self.update_button_status()
+
+
     def refresh_table(self):
         try:
             self.routerTable.setRowCount(0)
@@ -100,29 +120,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             nodes = result.fetchall()
         return nodes
 
-    def handle_table_double_click(self, item):
-        if item is not None:
-            self.item_double_clicked = True
-            self.update_button_status()
-            row = item.row()
-            node = self.get_nodes()[row]
-            self.selected_node = self.get_nodes()[row] 
-
-            #self.page_2.label_name.setText(f"Name: {self.selected_node[4]}")
-            #self.page_2.label_ip.setText(f"IP Address: {self.selected_node[3]}")
-            #self.page_2.label_username.setText(f"Username: {self.selected_node[2]}")
-
-            self.stackedWidget.setCurrentWidget(self.page_2)
-
     def update_button_status(self):
-            # Enable buttons if an item is double-clicked, otherwise disable them
-            self.btn_page_2.setEnabled(self.item_double_clicked)
-            self.btn_page_3.setEnabled(self.item_double_clicked)
-            self.btn_page_4.setEnabled(self.item_double_clicked)
-            self.btn_page_5.setEnabled(self.item_double_clicked)
-            self.btn_page_6.setEnabled(self.item_double_clicked)
-            self.btn_page_7.setEnabled(self.item_double_clicked)
-            self.btn_page_8.setEnabled(self.item_double_clicked)
+        page_buttons = [self.btn_page_2, self.btn_page_3, self.btn_page_4,
+                        self.btn_page_5, self.btn_page_6, self.btn_page_7, self.btn_page_8]
+        enable_buttons = self.selected_node is not None
+        for button in page_buttons:
+            button.setEnabled(enable_buttons)
+
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):
