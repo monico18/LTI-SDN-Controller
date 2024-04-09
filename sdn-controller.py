@@ -4,6 +4,7 @@ from login import Ui_LoginPage
 import sys
 import atexit
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
+from sqlalchemy.orm import sessionmaker
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -44,15 +45,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.refresh_table()
 
     def add_node(self):
+        # Create a session
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
         username = self.lineEdit.text()
         password = self.lineEdit_2.text()
         ip_address = self.lineEdit_3.text()
         name = self.lineEdit_4.text()
 
+        # Insert the values into the nodes table
         ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
-        with self.engine.connect() as connection:
-            connection.execute(ins)
-            connection.commit()
+        session.execute(ins)
+
+        # Commit the transaction
+        session.commit()
 
         print("Node added successfully!")
 
@@ -62,6 +69,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.lineEdit_4.clear()
 
         self.refresh_table()
+
+        # Close the session
+        session.close()
 
     def refresh_table(self):
         try:
@@ -138,12 +148,19 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
             print("Invalid username or password.")
 
 def clear_db(engine, nodes):
+    # Create a session
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
+    # Create a delete statement that deletes all rows from the nodes table
     del_stmt = delete(nodes)
 
-    with engine.connect() as connection:
-        connection.execute(del_stmt)
-        connection.commit()
+    # Execute the delete statement
+    session.execute(del_stmt)
+
+    # Commit the transaction
+    session.commit()
+    session.close()
 
 if __name__ == "__main__":
     engine = create_engine('sqlite:///sdn_controller.db', echo=True)
