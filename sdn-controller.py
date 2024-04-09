@@ -3,6 +3,8 @@ from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
 import sys
 import atexit
+import requests
+from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
 from sqlalchemy.orm import sessionmaker
 
@@ -25,9 +27,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_6.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_6))
         self.btn_page_7.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_7))
         self.btn_page_8.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_8))
-
-
-
 
 
         self.btn_add.clicked.connect(self.add_node)
@@ -54,24 +53,31 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         ip_address = self.lineEdit_3.text()
         name = self.lineEdit_4.text()
 
-        # Insert the values into the nodes table
-        ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
-        session.execute(ins)
 
-        # Commit the transaction
-        session.commit()
 
-        print("Node added successfully!")
+        response = requests.get(f'https://{ip_address}/rest/ip/address', auth=HTTPBasicAuth(username,password), verify=False)
+        print(response)
+        if response.status_code == 200:
+            # Insert the values into the nodes table
+            ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
+            session.execute(ins)
 
-        self.lineEdit.clear()
-        self.lineEdit_2.clear()
-        self.lineEdit_3.clear()
-        self.lineEdit_4.clear()
+            # Commit the transaction
+            session.commit()
 
-        self.refresh_table()
+            print("Node added successfully!")
 
-        # Close the session
-        session.close()
+            self.lineEdit.clear()
+            self.lineEdit_2.clear()
+            self.lineEdit_3.clear()
+            self.lineEdit_4.clear()
+
+            self.refresh_table()
+
+            # Close the session
+            session.close()
+        else:
+            return None
 
     def refresh_table(self):
         try:
