@@ -79,7 +79,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lineEdit_2.clear()
             self.lineEdit_3.clear()
             self.lineEdit_4.clear()
-
+            self.routerTable.verticalHeader().setVisible(False)
             self.refresh_table()
 
             # Close the session
@@ -93,8 +93,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.selected_nodes_text.setText("Selected Nodes:")
             for index in selected_nodes_table:
                 current_text= self.selected_nodes_text.text()
-                self.selected_nodes_text.setText(f"{current_text}\n {index}")
-            print(self.selected_node+"\n")
+                self.selected_nodes_text.setText(f"{current_text}\n {index.data()}")
+            print(self.selected_node)
             self.stackedWidget.setCurrentWidget(self.page_2)
             self.update_button_status()
 
