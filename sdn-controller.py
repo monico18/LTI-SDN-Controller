@@ -60,7 +60,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def open_dhcp_config_page(self):
         if not self.dhcp_config_page:
-            self.dhcp_config_page = DhcpPage(self.ip_address, self.username, self.password)
+            self.dhcp_config_page = DhcpPage(self.ip_address,self.username,self.password)
             self.dhcp_config_page.configSaved.connect(self.handleConfigSaved)
         self.dhcp_config_page.show()
 
@@ -153,10 +153,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def refresh_table_dhcp(self):
         try:
-            response = dhcp_queries.get_available_dhcp_servers(self.username,self.password,self.ip_address)
+            response= dhcp_queries.get_available_dhcp_servers(self.username,self.password,self.ip_address)
             dhcp_server_data = response
             self.dhcptable.setRowCount(0) 
-            print(response)
             for row ,dhcp_server in enumerate(dhcp_server_data):
 
                 name = dhcp_server.get('name', '')           
@@ -193,14 +192,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
      configSaved = pyqtSignal()
-     def __init__(self):
+     def __init__(self,ip_address,username,password):
         super(DhcpPage, self).__init__()
         self.setupUi(self)
         self.btn_update_dhcp.clicked.connect(self.saveConfig)
 
         self.pool_config_page = None
+        self.ip_address= ip_address
+        self.username=username
+        self.password=password
 
-        self.btn_add_pool.clicked.coonect()
+        self.btn_add_pool.clicked.connect(self.open_pool_config_page)
         self.populate_interfaces()
 
      def open_pool_config_page(self):
@@ -222,7 +224,8 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
                 self.interfaces.clear()
 
                 for interface in interface_data:
-                    self.interfaces.addItem(interface['default-name'])  
+                    interface_name = interface.get('default-name', '')  # Use the correct key for interface name
+                    self.interfaces.addItem(interface_name)
         except Exception as e:
             print(f"Error populating interfaces: {e}")
 
@@ -242,10 +245,20 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         name = self.line_name.text()
         relay = self.line_relay.text()
         interface = self.interfaces.currentText()
-        time = self.lease_time.time()
-        address_pool = self.address_pool.currentText()
+        time = self.lease_time.time().toString("hh:mm:ss")
+        #address_pool = self.address_pool.currentText()
 
+        params = {
+            'address_pool': 'default-dhcp',
+            'interface': interface,
+            'name': name,
+            'relay': relay,
+            'lease_time': time,
+        }
 
+        json_params = json.dumps(params)
+
+        responseSave = dhcp_queries.add_dhcp_server(self.username,self.password,self.ip_address,json_params)
 
         self.configSaved.emit()
 
