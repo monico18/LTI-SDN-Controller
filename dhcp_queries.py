@@ -3,7 +3,7 @@ import requests
 def add_dhcp_server(username, password, host, dhcp_server_config):
     try:
         url = f"https://{host}/rest/ip/dhcp-server/add"
-        response = requests.post(url, auth=(username, password), data=dhcp_server_config)
+        response = requests.post(url, auth=(username, password), data=dhcp_server_config, verify=False)
         return response.json()
 
     except Exception as e:
@@ -12,7 +12,7 @@ def add_dhcp_server(username, password, host, dhcp_server_config):
 def delete_dhcp_server(username, password, host, dhcp_server_id):
     try:
         url = f"http://{host}/rest/ip/dhcp-server/{dhcp_server_id}"
-        response = requests.delete(url, auth=(username, password), data={'.id': dhcp_server_id})
+        response = requests.delete(url, auth=(username, password), data={'.id': dhcp_server_id}, verify=False)
         return response.json()
 
     except Exception as e:
@@ -21,7 +21,7 @@ def delete_dhcp_server(username, password, host, dhcp_server_id):
 def edit_dhcp_server(username, password, host, dhcp_server_id, dhcp_server_config):
     try:
         url = f"https://{host}/rest/ip/dhcp-server/{dhcp_server_id}"
-        response = requests.patch(url, auth=(username, password), data={'.id': dhcp_server_id, **dhcp_server_config})
+        response = requests.patch(url, auth=(username, password), data={'.id': dhcp_server_id, **dhcp_server_config}, verify=False)
         return response.json()
 
     except Exception as e:
@@ -30,7 +30,7 @@ def edit_dhcp_server(username, password, host, dhcp_server_id, dhcp_server_confi
 def get_available_dhcp_servers(username, password, host):
     try:
         url = f"https://{host}/rest/ip/dhcp-server"
-        response = requests.get(url, auth=(username, password))
+        response = requests.get(url, auth=(username, password), verify=False)
         dhcp_servers = response.json().get('data', [])
         return dhcp_servers
 
