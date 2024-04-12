@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>DhcpConfig</class>
+ <widget class="QWidget" name="DhcpConfig">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>777</width>
-    <height>548</height>
+    <width>889</width>
+    <height>698</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,8 +19,8 @@
   <widget class="QPushButton" name="btn_update_dhcp">
    <property name="geometry">
     <rect>
-     <x>320</x>
-     <y>410</y>
+     <x>310</x>
+     <y>490</y>
      <width>111</width>
      <height>41</height>
     </rect>
@@ -526,8 +526,8 @@
   <widget class="QPushButton" name="btn_cancel_dhcp">
    <property name="geometry">
     <rect>
-     <x>450</x>
-     <y>410</y>
+     <x>440</x>
+     <y>490</y>
      <width>111</width>
      <height>41</height>
     </rect>
@@ -678,9 +678,9 @@
       <colorrole role="Button">
        <brush brushstyle="SolidPattern">
         <color alpha="255">
-         <red>255</red>
-         <green>255</green>
-         <blue>255</blue>
+         <red>45</red>
+         <green>45</green>
+         <blue>45</blue>
         </color>
        </brush>
       </colorrole>
@@ -734,9 +734,9 @@
       <colorrole role="Button">
        <brush brushstyle="SolidPattern">
         <color alpha="255">
-         <red>255</red>
-         <green>255</green>
-         <blue>255</blue>
+         <red>45</red>
+         <green>45</green>
+         <blue>45</blue>
         </color>
        </brush>
       </colorrole>
@@ -790,9 +790,9 @@
       <colorrole role="Button">
        <brush brushstyle="SolidPattern">
         <color alpha="255">
-         <red>255</red>
-         <green>255</green>
-         <blue>255</blue>
+         <red>45</red>
+         <green>45</green>
+         <blue>45</blue>
         </color>
        </brush>
       </colorrole>
@@ -1635,6 +1635,9 @@
      </disabled>
     </palette>
    </property>
+   <property name="displayFormat">
+    <string>HH:mm:ss</string>
+   </property>
   </widget>
   <widget class="QLabel" name="label_4">
    <property name="geometry">
@@ -1821,7 +1824,7 @@
     <string>Address Pool</string>
    </property>
   </widget>
-  <widget class="QComboBox" name="interfaces_2">
+  <widget class="QComboBox" name="address_pool">
    <property name="geometry">
     <rect>
      <x>80</x>

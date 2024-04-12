@@ -1,8 +1,10 @@
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import pyqtSignal, Qt
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
 from dhcp_config import Ui_DhcpConfig
 import sys
+import json
 import atexit
 import requests
 from requests.auth import HTTPBasicAuth
@@ -19,6 +21,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.engine = engine 
         self.nodes = nodes
         self.selected_node = []
+        self.ip_address = None
+        self.username = None
+        self.password = None
+        self.dhcp_config_page = None
+
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
         self.btn_page_2.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_2))
@@ -32,6 +39,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.btn_add.clicked.connect(self.add_node)
         self.btn_config_selected_nodes.clicked.connect(self.configure_selected_nodes)
+        self.btn_add_dhcp.clicked.connect(self.open_dhcp_config_page) 
+
 
         self.update_button_status()
 
@@ -45,23 +54,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_7.setEnabled(False)
         self.btn_page_8.setEnabled(False)
 
-        self.btn_add_dhcp.clicked.connect(self.open_dhcp_config_page) 
-        self.dhcp_config_page = None
-
-
         self.refresh_table()
 
+
+
     def open_dhcp_config_page(self):
-        if not self.dhcp_config_page:  
-            self.dhcp_config_page = DhcpPage() 
-            self.dhcp_config_page.show()  
-        else:
-            self.dhcp_config_page.show()
+        if not self.dhcp_config_page:
+            self.dhcp_config_page = DhcpPage(self.ip_address, self.username, self.password)
+            self.dhcp_config_page.configSaved.connect(self.handleConfigSaved)
+        self.dhcp_config_page.show()
+
+    def handleConfigSaved(self):
+        if self.dhcp_config_page:
+            self.dhcp_config_page.hide()
+            self.refresh_table_dhcp()
 
     def handle_table_item_clicked(self, item):
         row = item.row()
         self.selected_node = self.get_nodes()[row]
-
 
     def add_node(self):
         # Create a session
@@ -69,8 +79,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         session = Session()
 
         username = self.lineEdit.text()
+        self.username = username
         password = self.lineEdit_2.text()
+        self.password = password
         ip_address = self.lineEdit_3.text()
+        self.ip_address = ip_address
         name = self.lineEdit_4.text()
 
 
@@ -93,12 +106,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lineEdit_4.clear()
             self.routerTable.verticalHeader().setVisible(False)
             self.refresh_table()
+            self.refresh_table_dhcp()
 
             # Close the session
             session.close()
         else:
             return None
-
+        
     def configure_selected_nodes(self):
         selected_nodes_table = self.routerTable.selectedIndexes()
         if self.selected_node:
@@ -109,7 +123,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(self.selected_node)
             self.stackedWidget.setCurrentWidget(self.page_2)
             self.update_button_status()
-
 
     def refresh_table(self):
         try:
@@ -124,6 +137,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         except Exception as e:
             print(f"Error in refresh_table: {e}")
+
+    def refresh_table_dhcp(self):
+        try:
+            response = requests.get(f'https://{self.ip_address}/rest/ip/dhcp-server', auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            if response.status_code == 200:
+                dhcp_server_data = json.loads(response.text)                
+                self.dhcptable.setRowCount(0) 
+
+                for row ,dhcp_server in enumerate(dhcp_server_data):
+
+                    print("OLA OLA DHCP")
+                    name = dhcp_server.get('name', '')           
+                    interface = dhcp_server.get('interface', '')  
+                    lease_time = dhcp_server.get('lease-time', '') 
+                    address_pool = dhcp_server.get('address-pool', '')
+                    self.dhcptable.insertRow(row)
+                    print("OLA OLA DHCP2")
+
+                    self.dhcptable.setItem(row, 0, QtWidgets.QTableWidgetItem(name))
+                    self.dhcptable.setItem(row, 1, QtWidgets.QTableWidgetItem(interface))
+                    self.dhcptable.setItem(row, 2, QtWidgets.QTableWidgetItem(lease_time))
+                    self.dhcptable.setItem(row, 3, QtWidgets.QTableWidgetItem(address_pool))
+                self.dhcptable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+                self.dhcptable.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+                self.dhcptable.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+                self.dhcptable.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
+
+        except Exception as e:
+            print(f"Error populating DHCP servers: {e}")
 
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
@@ -140,9 +182,51 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             button.setEnabled(enable_buttons)
 
 class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
-     def __init__(self):
+     configSaved = pyqtSignal()
+     def __init__(self, ip_address, username, password):
         super(DhcpPage, self).__init__()
         self.setupUi(self)
+        self.btn_update_dhcp.clicked.connect(self.saveConfig)
+
+
+        self.populate_interfaces()
+
+     def populate_interfaces(self):
+        try:
+            response = requests.get(f'https://{self.ip_address}/rest/interface', auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            if response.status_code == 200:
+                interface_data = response.json() 
+
+                self.interfaces.clear()
+
+                for interface in interface_data:
+                    self.interfaces.addItem(interface['default-name'])  # Adjust this to match your data structure
+        except Exception as e:
+            print(f"Error populating interfaces: {e}")
+
+     def populate_address_pool(self):
+         try:
+             response = requests.get(f'https://{self.ip_address}/rest/ip/pool', auth=HTTPBasicAuth(self.username, self.password), verify=False)
+             if response.status_code == 200:
+                address_pool_data = response.json()
+
+                self.address_pool.clear()
+                for addresspool in address_pool_data:
+                    self.address_pool.addItem(addresspool['name'])
+         except Exception as e:
+            print(f"Error populating address_pools: {e}")
+             
+     def saveConfig(self):
+        name = self.line_name.text()
+        relay = self.line_relay.text()
+        interface = self.interfaces.currentText()
+        time = self.lease_time.time()
+        address_pool = self.address_pool.currentText()
+
+        self.configSaved.emit()
+
+
+
 
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
