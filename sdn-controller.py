@@ -73,23 +73,37 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         self.selected_node = self.get_nodes()[row]
 
+        ip_address = self.routerTable.item(row, 1).text()
+
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        s = self.nodes.select().where(self.nodes.c.ip_address == ip_address)
+
+        data = session.execute(s)
+        node = data.fetchone()
+        session.commit()
+        _, username, password, ip_address, _ = node
+
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+        self.refresh_table_dhcp()
+
+
     def add_node(self):
         # Create a session
         Session = sessionmaker(bind=engine)
         session = Session()
 
         username = self.lineEdit.text()
-        self.username = username
         password = self.lineEdit_2.text()
-        self.password = password
         ip_address = self.lineEdit_3.text()
-        self.ip_address = ip_address
         name = self.lineEdit_4.text()
 
 
 
         response = requests.get(f'https://{ip_address}/rest/ip/address', auth=HTTPBasicAuth(username,password), verify=False)
-        print(response)
         if response.status_code == 200:
             # Insert the values into the nodes table
             ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
@@ -120,7 +134,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for index in selected_nodes_table:
                 current_text= self.selected_nodes_text.text()
                 self.selected_nodes_text.setText(f"{current_text}\n {index.data()}")
-            print(self.selected_node)
             self.stackedWidget.setCurrentWidget(self.page_2)
             self.update_button_status()
 
@@ -140,25 +153,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def refresh_table_dhcp(self):
         try:
-            response = requests.get(f'https://{self.ip_address}/rest/ip/dhcp-server', auth=HTTPBasicAuth(self.username, self.password), verify=False)
-            if response.status_code == 200:
-                dhcp_server_data = json.loads(response.text)                
-                self.dhcptable.setRowCount(0) 
+            api = connect(username=self.username, password=self.password, host=self.ip_address)
+            response = dhcp_queries.get_available_dhcp_servers(api)
+            dhcp_server_data = response         
+            self.dhcptable.setRowCount(0) 
+            print(dhcp_server_data)
+            for row ,dhcp_server in enumerate(dhcp_server_data):
 
-                for row ,dhcp_server in enumerate(dhcp_server_data):
+                name = dhcp_server.get('name', '')           
+                interface = dhcp_server.get('interface', '')  
+                lease_time = dhcp_server.get('lease-time', '') 
+                address_pool = dhcp_server.get('address-pool', '')
+                self.dhcptable.insertRow(row)
 
-                    print("OLA OLA DHCP")
-                    name = dhcp_server.get('name', '')           
-                    interface = dhcp_server.get('interface', '')  
-                    lease_time = dhcp_server.get('lease-time', '') 
-                    address_pool = dhcp_server.get('address-pool', '')
-                    self.dhcptable.insertRow(row)
-                    print("OLA OLA DHCP2")
-
-                    self.dhcptable.setItem(row, 0, QtWidgets.QTableWidgetItem(name))
-                    self.dhcptable.setItem(row, 1, QtWidgets.QTableWidgetItem(interface))
-                    self.dhcptable.setItem(row, 2, QtWidgets.QTableWidgetItem(lease_time))
-                    self.dhcptable.setItem(row, 3, QtWidgets.QTableWidgetItem(address_pool))
+                self.dhcptable.setItem(row, 0, QtWidgets.QTableWidgetItem(name))
+                self.dhcptable.setItem(row, 1, QtWidgets.QTableWidgetItem(interface))
+                self.dhcptable.setItem(row, 2, QtWidgets.QTableWidgetItem(lease_time))
+                self.dhcptable.setItem(row, 3, QtWidgets.QTableWidgetItem(address_pool))
                 self.dhcptable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
                 self.dhcptable.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
                 self.dhcptable.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
@@ -205,8 +216,7 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
             
      def populate_interfaces(self):
         try:
-            api = connect(username=self.username, password=self.password, host=self.ip_address)
-            response = dhcp_queries.get_available_dhcp_servers(api)
+            response = requests.get(f'https://{self.ip_address}/rest/interface', auth=HTTPBasicAuth(self.username, self.password), verify=False)
             if response.status_code == 200:
                 interface_data = response.json() 
 
@@ -314,12 +324,12 @@ if __name__ == "__main__":
     metadata.create_all(engine)
 
     app = QtWidgets.QApplication(sys.argv)
-    clear_db(engine, nodes)
+    #clear_db(engine, nodes)
     login_page = LoginPage()
     main_window = MainWindow(engine, nodes)
 
     login_page.set_stacked_widget(main_window.stackedWidget)
 
     login_page.show()
-    atexit.register(clear_db,engine,nodes)  # Register clear_db with engine and nodes arguments
+    #atexit.register(clear_db,engine,nodes)  # Register clear_db with engine and nodes arguments
     sys.exit(app.exec_())
