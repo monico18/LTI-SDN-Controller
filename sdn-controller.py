@@ -88,8 +88,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ip_address = ip_address
         self.username = username
         self.password = password
-        self.refresh_table_dhcp()
 
+        self.refresh_table_dhcp()
 
     def add_node(self):
         # Create a session
@@ -153,11 +153,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def refresh_table_dhcp(self):
         try:
-            api = connect(username=self.username, password=self.password, host=self.ip_address)
-            response = dhcp_queries.get_available_dhcp_servers(api)
-            dhcp_server_data = response         
+            response = dhcp_queries.get_available_dhcp_servers(self.username,self.password,self.ip_address)
+            dhcp_server_data = response
             self.dhcptable.setRowCount(0) 
-            print(dhcp_server_data)
+            print(response)
             for row ,dhcp_server in enumerate(dhcp_server_data):
 
                 name = dhcp_server.get('name', '')           
