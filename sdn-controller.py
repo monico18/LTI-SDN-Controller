@@ -3,6 +3,8 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
 from dhcp_config import Ui_DhcpConfig
+from pool_config import Ui_PoolConfig
+import dhcp_queries
 import sys
 import json
 import atexit
@@ -55,8 +57,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_8.setEnabled(False)
 
         self.refresh_table()
-
-
 
     def open_dhcp_config_page(self):
         if not self.dhcp_config_page:
@@ -183,24 +183,37 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
      configSaved = pyqtSignal()
-     def __init__(self, ip_address, username, password):
+     def __init__(self):
         super(DhcpPage, self).__init__()
         self.setupUi(self)
         self.btn_update_dhcp.clicked.connect(self.saveConfig)
 
+        self.pool_config_page = None
 
+        self.btn_add_pool.clicked.coonect()
         self.populate_interfaces()
 
+     def open_pool_config_page(self):
+        if not self.pool_config_page:
+            self.pool_config_page = PoolPage(self.ip_address, self.username, self.password)
+            self.pool_config_page.configSaved.connect(self.handleConfigSaved)
+        self.dhcp_config_page.show()
+
+     def handleConfigSaved(self):
+        if self.pool_config_page:
+            self.pool_config_page.hide()
+            
      def populate_interfaces(self):
         try:
-            response = requests.get(f'https://{self.ip_address}/rest/interface', auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            api = connect(username=self.username, password=self.password, host=self.ip_address)
+            response = dhcp_queries.get_available_dhcp_servers(api)
             if response.status_code == 200:
                 interface_data = response.json() 
 
                 self.interfaces.clear()
 
                 for interface in interface_data:
-                    self.interfaces.addItem(interface['default-name'])  # Adjust this to match your data structure
+                    self.interfaces.addItem(interface['default-name'])  
         except Exception as e:
             print(f"Error populating interfaces: {e}")
 
@@ -223,10 +236,23 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         time = self.lease_time.time()
         address_pool = self.address_pool.currentText()
 
+
+
         self.configSaved.emit()
 
 
+class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
+    configSaved = pyqtSignal()
+    def __init__(self):
+        super(PoolPage,self).__init__()
+        self.setupUi(self)
+        self.btn_apply_pool.clicked.connect(self.saveConfig)
 
+    def saveConfig(self):
+        name = self.line_name.text()
+        address = self.line_addresses.text()
+
+        self.configSaved.emit()
 
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
