@@ -1,27 +1,38 @@
-def add_dhcp_server(api, dhcp_server_config):
+import requests
+
+def add_dhcp_server(username, password, host, dhcp_server_config):
     try:
-        return api('/ip/dhcp-server/add', **dhcp_server_config)
+        url = f"https://{host}/rest/ip/dhcp-server/add"
+        response = requests.post(url, auth=(username, password), data=dhcp_server_config)
+        return response.json()
 
     except Exception as e:
         print("Failed to add DHCP server:", str(e))
 
-def delete_dhcp_server(api, dhcp_server_id):
+def delete_dhcp_server(username, password, host, dhcp_server_id):
     try:
-        return api('/ip/dhcp-server/remove', {'.id': dhcp_server_id})
+        url = f"http://{host}/rest/ip/dhcp-server/{dhcp_server_id}"
+        response = requests.delete(url, auth=(username, password), data={'.id': dhcp_server_id})
+        return response.json()
+
     except Exception as e:
         print("Failed to delete DHCP server:", str(e))
 
-def edit_dhcp_server(api, dhcp_server_id, dhcp_server_config):
+def edit_dhcp_server(username, password, host, dhcp_server_id, dhcp_server_config):
     try:
-        return api('/ip/dhcp-server/set', {'.id': dhcp_server_id, **dhcp_server_config})
+        url = f"https://{host}/rest/ip/dhcp-server/{dhcp_server_id}"
+        response = requests.patch(url, auth=(username, password), data={'.id': dhcp_server_id, **dhcp_server_config})
+        return response.json()
+
     except Exception as e:
         print("Failed to edit DHCP server:", str(e))
-    else:
-        print("Failed to edit DHCP server.")
 
-def get_available_dhcp_servers(api):
+def get_available_dhcp_servers(username, password, host):
     try:
-        dhcp_servers = api.path('/ip/dhcp-server').call('print')
+        url = f"https://{host}/rest/ip/dhcp-server"
+        response = requests.get(url, auth=(username, password))
+        dhcp_servers = response.json().get('data', [])
         return dhcp_servers
+
     except Exception as e:
         print("Failed to get available DHCP servers:", str(e))
