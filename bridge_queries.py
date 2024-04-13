@@ -35,6 +35,14 @@ def add_bridge_port(username, password, host, port_config):
     except Exception as e:
         print("Failed to add bridge port:", str(e))
 
+def delete_bridge_port(username, password, host, port_id):
+    try:
+        response = requests.delete(f"https://{host}/rest/interface/bridge/port/{port_id}", auth=HTTPBasicAuth(username, password), verify=False)
+        return response.json()
+
+    except Exception as e:
+        print("Failed to delete bridge port:", str(e))
+
 def get_bridge(username, password, host, bridge_id):
     try:
         response = requests.get(f"https://{host}/rest/interface/bridge/{bridge_id}", auth=HTTPBasicAuth(username, password), verify=False)
