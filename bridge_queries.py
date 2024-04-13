@@ -12,11 +12,20 @@ def get_bridges(username, password, host):
 
 def add_bridge(username, password, host, bridge_config):
     try:
-        response = requests.put(f"https://{host}/rest/interface/bridge/add", auth=HTTPBasicAuth(username, password), data=bridge_config, verify=False)
+        response = requests.put(f"https://{host}/rest/interface/bridge", auth=HTTPBasicAuth(username, password), data=bridge_config, verify=False)
         return response.json()
 
     except Exception as e:
         print("Failed to add bridge:", str(e))
+
+def get_bridge_ports(username, password, host):
+    try:
+        response = requests.get(f"https://{host}/rest/interface/bridge/port", auth=HTTPBasicAuth(username, password), verify=False)
+        bridge_ports = response.json()
+        return bridge_ports
+
+    except Exception as e:
+        print("Failed to get bridge ports:", str(e))
 
 def add_bridge_port(username, password, host, bridge_id, port_config):
     try:
