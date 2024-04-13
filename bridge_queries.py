@@ -18,6 +18,14 @@ def add_bridge(username, password, host, bridge_config):
     except Exception as e:
         print("Failed to add bridge:", str(e))
 
+def add_bridge_port(username, password, host, bridge_id, port_config):
+    try:
+        response = requests.put(f"https://{host}/rest/interface/bridge/{bridge_id}/port", auth=HTTPBasicAuth(username, password), data=port_config, verify=False)
+        return response.json()
+
+    except Exception as e:
+        print("Failed to add bridge port:", str(e))
+
 def get_bridge(username, password, host, bridge_id):
     try:
         response = requests.get(f"https://{host}/rest/interface/bridge/{bridge_id}", auth=HTTPBasicAuth(username, password), verify=False)
