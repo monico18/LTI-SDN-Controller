@@ -12,7 +12,7 @@ def get_wireless_profiles(username, password, host):
 
 def add_wireless_profile(username, password, host, wireless_profile_config):
     try:
-        response = requests.put(f"https://{host}/rest/interface/wireless/add", auth=HTTPBasicAuth(username, password), data=wireless_profile_config, verify=False)
+        response = requests.put(f"https://{host}/rest/interface/wireless", auth=HTTPBasicAuth(username, password), data=wireless_profile_config, verify=False)
         return response.json()
 
     except Exception as e:

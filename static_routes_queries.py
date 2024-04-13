@@ -12,7 +12,7 @@ def get_static_routes(username, password, host):
 
 def add_static_route(username, password, host, static_route_config):
     try:
-        response = requests.put(f"https://{host}/rest/interface/route/add", auth=HTTPBasicAuth(username, password), data=static_route_config, verify=False)
+        response = requests.put(f"https://{host}/rest/interface/route", auth=HTTPBasicAuth(username, password), data=static_route_config, verify=False)
         return response.json()
 
     except Exception as e:

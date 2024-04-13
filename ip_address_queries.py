@@ -12,7 +12,7 @@ def get_ip_address(username, password, host):
 
 def add_ip_address(username, password, host, ip_query_config):
     try:
-        response = requests.put(f"https://{host}/rest/ip/address/add", auth=HTTPBasicAuth(username, password), data=ip_query_config, verify=False)
+        response = requests.put(f"https://{host}/rest/ip/address", auth=HTTPBasicAuth(username, password), data=ip_query_config, verify=False)
         return response.json()
 
     except Exception as e:

@@ -12,7 +12,7 @@ def get_pools(username, password, host):
 
 def add_pool(username, password, host, pool_config):
     try:
-        response = requests.post(f"https://{host}/rest/ip/pool", auth=HTTPBasicAuth(username, password), data=pool_config, verify=False)
+        response = requests.put(f"https://{host}/rest/ip/pool", auth=HTTPBasicAuth(username, password), data=pool_config, verify=False)
         return response.json()
 
     except Exception as e:

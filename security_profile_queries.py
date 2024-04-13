@@ -12,7 +12,7 @@ def get_security_profiles(username, password, host):
 
 def add_security_profile(username, password, host, security_profile_config):
     try:
-        response = requests.put(f"https://{host}/rest/interface/security-profiles/add", auth=HTTPBasicAuth(username, password), data=security_profile_config, verify=False)
+        response = requests.put(f"https://{host}/rest/interface/security-profiles", auth=HTTPBasicAuth(username, password), data=security_profile_config, verify=False)
         return response.json()
 
     except Exception as e:

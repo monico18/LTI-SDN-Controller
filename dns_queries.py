@@ -18,7 +18,7 @@ def edit_dns(username, password, host, dns_config):
 
 def add_static_dns(username, password, host, name, address):
     try:
-        response = requests.post(f"https://{host}/ip/dns/static/add", auth=HTTPBasicAuth(username, password), data={'name': name, 'address': address}, verify=False)
+        response = requests.put(f"https://{host}/ip/dns/static", auth=HTTPBasicAuth(username, password), data={'name': name, 'address': address}, verify=False)
         return response.json()
     except Exception as e:
         print("Failed to add static DNS:", str(e))
