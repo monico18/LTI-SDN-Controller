@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSignal, Qt
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
@@ -8,7 +8,9 @@ import dhcp_queries
 import sys
 import json
 import atexit
+import warnings
 import requests
+import urllib3
 from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
 from sqlalchemy.orm import sessionmaker
@@ -23,6 +25,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.engine = engine 
         self.nodes = nodes
         self.selected_node = []
+        self.selected_dhcp = None
         self.ip_address = None
         self.username = None
         self.password = None
@@ -41,12 +44,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.btn_add.clicked.connect(self.add_node)
         self.btn_config_selected_nodes.clicked.connect(self.configure_selected_nodes)
+        if self.selected_dhcp is None:
+            self.btn_update_dhcp.setEnabled(False)
+            self.btn_delete_dhcp.setEnabled(False)
+
         self.btn_add_dhcp.clicked.connect(self.open_dhcp_config_page) 
+        self.btn_update_dhcp.clicked.connect(self.open_dhcp_config_page)
+        self.btn_delete_dhcp.clicked.connect(self.open_dhcp_config_page)
 
 
         self.update_button_status()
 
         self.routerTable.itemClicked.connect(self.handle_table_item_clicked)
+        self.dhcptable.itemClicked.connect(self.handle_dhcptable_item_clicked)
+
 
         self.btn_page_2.setEnabled(False)
         self.btn_page_3.setEnabled(False)
@@ -59,10 +70,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.refresh_table()
 
     def open_dhcp_config_page(self):
-        if not self.dhcp_config_page:
-            self.dhcp_config_page = DhcpPage(self.ip_address,self.username,self.password)
+        sender = self.sender()  
+           
+        if sender == self.btn_delete_dhcp:           
+            dhcp_queries.delete_dhcp_server(self.username,self.password,self.ip_address,self.selected_dhcp['.id'])
+            self.refresh_table_dhcp()
+        if sender == self.btn_update_dhcp: 
+            if self.selected_node is None:
+                QtWidgets.QMessageBox.critical(self, "Error", "No node selected.")
+                return
+            if self.selected_dhcp is not None:
+                if not self.dhcp_config_page:
+                    self.dhcp_config_page = DhcpPage(self.ip_address, self.username, self.password)
+                    self.dhcp_config_page.configSaved.connect(self.handleConfigSaved)
+                self.dhcp_config_page.populate_dhcp_data(self.selected_dhcp)
+                self.dhcp_config_page.show()
+        if sender == self.btn_add_dhcp:
+            self.dhcp_config_page = DhcpPage(self.ip_address, self.username, self.password)
             self.dhcp_config_page.configSaved.connect(self.handleConfigSaved)
-        self.dhcp_config_page.show()
+            self.dhcp_config_page.show()
 
     def handleConfigSaved(self):
         if self.dhcp_config_page:
@@ -70,6 +96,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.refresh_table_dhcp()
 
     def handle_table_item_clicked(self, item):
+
         row = item.row()
         self.selected_node = self.get_nodes()[row]
 
@@ -90,6 +117,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.password = password
 
         self.refresh_table_dhcp()
+    
+    def handle_dhcptable_item_clicked(self, item):
+        self.btn_update_dhcp.setEnabled(True)
+        self.btn_delete_dhcp.setEnabled(True)
+        row = item.row()
+        dhcp_id = self.dhcptable.item(row,1).text()
+        self.selected_dhcp = dhcp_queries.get_specific_dhcp_server(self.username,self.password,self.ip_address,dhcp_id)
 
     def add_node(self):
         # Create a session
@@ -157,21 +191,33 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             dhcp_server_data = response
             self.dhcptable.setRowCount(0) 
             for row ,dhcp_server in enumerate(dhcp_server_data):
-
+                
+                dhcp_id=dhcp_server.get('.id', '')
                 name = dhcp_server.get('name', '')           
                 interface = dhcp_server.get('interface', '')  
                 lease_time = dhcp_server.get('lease-time', '') 
                 address_pool = dhcp_server.get('address-pool', '')
+                disabled = dhcp_server.get('disabled', "")
+
+                if disabled == "false":
+                    state = "Enabled"
+                else:
+                    state = "Disabled"
                 self.dhcptable.insertRow(row)
 
-                self.dhcptable.setItem(row, 0, QtWidgets.QTableWidgetItem(name))
-                self.dhcptable.setItem(row, 1, QtWidgets.QTableWidgetItem(interface))
-                self.dhcptable.setItem(row, 2, QtWidgets.QTableWidgetItem(lease_time))
-                self.dhcptable.setItem(row, 3, QtWidgets.QTableWidgetItem(address_pool))
+                self.dhcptable.setItem(row, 0, QtWidgets.QTableWidgetItem(dhcp_id))
+                self.dhcptable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
+                self.dhcptable.setItem(row, 2, QtWidgets.QTableWidgetItem(interface))
+                self.dhcptable.setItem(row, 3, QtWidgets.QTableWidgetItem(lease_time))
+                self.dhcptable.setItem(row, 4, QtWidgets.QTableWidgetItem(address_pool))
+                self.dhcptable.setItem(row, 5, QtWidgets.QTableWidgetItem(state))
                 self.dhcptable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
                 self.dhcptable.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
                 self.dhcptable.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
                 self.dhcptable.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
+                self.dhcptable.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.Stretch)
+                self.dhcptable.horizontalHeader().setSectionResizeMode(5, QtWidgets.QHeaderView.Stretch)
+
 
         except Exception as e:
             print(f"Error populating DHCP servers: {e}")
@@ -195,15 +241,17 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
      def __init__(self,ip_address,username,password):
         super(DhcpPage, self).__init__()
         self.setupUi(self)
-        self.btn_update_dhcp.clicked.connect(self.saveConfig)
 
         self.pool_config_page = None
         self.ip_address= ip_address
         self.username=username
         self.password=password
+        self.id = None
 
+        self.btn_update_dhcp.clicked.connect(self.saveConfig)
         self.btn_add_pool.clicked.connect(self.open_pool_config_page)
         self.populate_interfaces()
+        self.populate_address_pool()
 
      def open_pool_config_page(self):
         if not self.pool_config_page:
@@ -211,20 +259,44 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
             self.pool_config_page.configSaved.connect(self.handleConfigSaved)
         self.dhcp_config_page.show()
 
+     def parse_lease_time(self,lease_time_str):
+        duration = lease_time_str.strip().lower()  
+        if duration.endswith('m'):
+            minutes = int(duration[:-1])  
+            seconds = minutes * 60  # Convert minutes to seconds
+        elif duration.endswith('h'):
+            hours = int(duration[:-1])  # Extract the numeric part before 'h' as hours
+            seconds = hours * 3600  # Convert hours to seconds
+        else:
+            raise ValueError("Unsupported lease time format")
+
+        return QtCore.QTime(0, 0, 0).addSecs(seconds)
+     
+     def populate_dhcp_data(self, dhcp_server_data):
+        self.line_name.setText(dhcp_server_data['name'])
+        lease_time_str = dhcp_server_data['lease-time'] 
+        lease_time = self.parse_lease_time(lease_time_str)
+        self.lease_time.setTime(lease_time)
+        self.id = dhcp_server_data['.id']
+        disabled = dhcp_server_data.get('disabled')
+        if disabled == "false":
+            self.radio_enable.setChecked(True)
+        else:
+            self.radio_disable.setChecked(True)
+
      def handleConfigSaved(self):
         if self.pool_config_page:
             self.pool_config_page.hide()
             
      def populate_interfaces(self):
         try:
-            response = requests.get(f'https://{self.ip_address}/rest/interface', auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            response = requests.get(f'https://{self.ip_address}/rest/interface/bridge', auth=HTTPBasicAuth(self.username, self.password), verify=False)
             if response.status_code == 200:
                 interface_data = response.json() 
 
                 self.interfaces.clear()
-
                 for interface in interface_data:
-                    interface_name = interface.get('default-name', '')  # Use the correct key for interface name
+                    interface_name = interface.get('name', '') 
                     self.interfaces.addItem(interface_name)
         except Exception as e:
             print(f"Error populating interfaces: {e}")
@@ -243,29 +315,39 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
              
      def saveConfig(self):
         name = self.line_name.text()
-        relay = self.line_relay.text()
         interface = self.interfaces.currentText()
         time = self.lease_time.time().toString("hh:mm:ss")
-        #address_pool = self.address_pool.currentText()
+        if self.radio_disable.isChecked():
+            disabled = True
+        else:
+            disabled = False
+
+        address_pool = self.address_pool.currentText()
+
+        if time == "00:00:00":
+            QtWidgets.QMessageBox.critical(self, "Error", "Invalid time: Lease time cannot be zero.")
+            return
+
 
         params = {
-            'address_pool': 'default-dhcp',
+            'address-pool': address_pool,
             'interface': interface,
             'name': name,
-            'relay': relay,
-            'lease_time': time,
+            'lease-time': time,
+            'disabled': disabled
         }
 
-        json_params = json.dumps(params)
-
-        responseSave = dhcp_queries.add_dhcp_server(self.username,self.password,self.ip_address,json_params)
+        if self.id != None:
+            dhcp_queries.edit_dhcp_server(self.username,self.password,self.ip_address,self.id,params)
+        else :
+            dhcp_queries.add_dhcp_server(self.username,self.password,self.ip_address,params)
 
         self.configSaved.emit()
 
 
 class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
     configSaved = pyqtSignal()
-    def __init__(self):
+    def __init__(self,ip_address, username, password):
         super(PoolPage,self).__init__()
         self.setupUi(self)
         self.btn_apply_pool.clicked.connect(self.saveConfig)
@@ -322,6 +404,7 @@ def clear_db(engine, nodes):
     session.close()
 
 if __name__ == "__main__":
+    warnings.filterwarnings("ignore", category=urllib3.exceptions.InsecureRequestWarning)
     engine = create_engine('sqlite:///sdn_controller.db', echo=True)
     metadata = MetaData()
 
