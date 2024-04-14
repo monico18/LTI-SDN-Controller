@@ -343,6 +343,8 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
         self.username=username
         self.password=password
         self.selected_bridge = None
+        self.ports_to_delete = []
+
 
         self.btn_apply_bridge.clicked.connect(self.save_configuration)
         self.interfaceBox = self.findChild(QtWidgets.QGroupBox, "interfaceBox")
@@ -411,29 +413,25 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
                 }
                 bridge_queries.add_bridge_port(self.username,self.password,self.ip_address,port_params)
         else :
-            bridge_queries.get_bridge(self.username,self.password,self.ip_address, self.selected_bridge['.id'])
-
             response_ports = bridge_queries.get_bridge_ports(self.username,self.password,self.ip_address)
             data_ports = response_ports
-            for ints in data_ports:
-                if ints['bridge'] == self.selected_bridge['name']:
 
-                    # TEMOS QUE FAZER O SEGUINTE PARA EVITAR O ERRO DE ONTEM :
-                    # Fazer um get aos ports da bridge selecionada para ver os que existem
-                    # comparamos os que existem aos selecionados
-                    # Se um selecionado não existir no portos da bridge, é adicionado
-                    # Se um porto da bridge não existe nos selecionados é apagado
+            existing_ports = [port['interface'] for port in data_ports if port['bridge'] == self.selected_bridge['name']]
 
-                    bridge_queries.delete_bridge_port(self.username,self.password,self.ip_address,ints['.id'])
             for interface in self.selected_interfaces:
-                print(self.selected_interfaces)
-                port_params = {
-                    'interface': interface,
-                    'bridge': self.selected_bridge['name']
-                }
-                bridge_queries.add_bridge_port(self.username,self.password,self.ip_address,port_params)
+                if interface not in existing_ports:
+                    port_params = {
+                        'interface': interface,
+                        'bridge': self.selected_bridge['.id']
+                    }
+                    bridge_queries.add_bridge_port(self.username, self.password, self.ip_address, port_params)
+                    
+            for port in data_ports:
+                if port['bridge'] == self.selected_bridge['name'] and port['interface'] not in self.selected_interfaces:
+                    bridge_queries.delete_bridge_port(self.username, self.password, self.ip_address, port['.id'])
 
-            bridge_queries.edit_bridge(self.username,self.password,self.ip_address,self.selected_bridge['.id'], params)
+            if name != self.selected_bridge['name']:
+                    bridge_queries.edit_bridge(self.username, self.password, self.ip_address, self.selected_bridge['.id'], params)
 
         self.configSaved.emit()
         self.close() 
