@@ -1,4 +1,5 @@
 import requests
+import json
 from requests.auth import HTTPBasicAuth
 
 def get_bridges(username, password, host):
@@ -12,7 +13,8 @@ def get_bridges(username, password, host):
 
 def add_bridge(username, password, host, bridge_config):
     try:
-        response = requests.put(f"https://{host}/rest/interface/bridge", auth=HTTPBasicAuth(username, password), data=bridge_config, verify=False)
+        data = json.dumps(bridge_config)
+        response = requests.put(f"https://{host}/rest/interface/bridge", auth=HTTPBasicAuth(username, password), data=data, verify=False)
         return response.json()
 
     except Exception as e:
@@ -29,7 +31,8 @@ def get_bridge_ports(username, password, host):
 
 def add_bridge_port(username, password, host, port_config):
     try:
-        response = requests.put(f"https://{host}/rest/interface/bridge/port", auth=HTTPBasicAuth(username, password), data=port_config, verify=False)
+        data = json.dumps(port_config)
+        response = requests.put(f"https://{host}/rest/interface/bridge/port", auth=HTTPBasicAuth(username, password), data=data, verify=False)
         return response.json()
 
     except Exception as e:
@@ -37,9 +40,9 @@ def add_bridge_port(username, password, host, port_config):
 
 def delete_bridge_port(username, password, host, port_id):
     try:
-        response = requests.delete(f"https://{host}/rest/interface/bridge/port/{port_id}", auth=HTTPBasicAuth(username, password), verify=False)
-        return response.json()
-
+        port_id_str = str(port_id)
+        response = requests.delete(f"https://{host}/rest/interface/bridge/port/{port_id_str}", auth=HTTPBasicAuth(username, password),
+                                    verify=False)
     except Exception as e:
         print("Failed to delete bridge port:", str(e))
 
@@ -54,7 +57,12 @@ def get_bridge(username, password, host, bridge_id):
 
 def edit_bridge(username, password, host, bridge_id, bridge_config):
     try:
-        response = requests.patch(f"https://{host}/rest/interface/bridge/{bridge_id}", auth=HTTPBasicAuth(username, password), data={'.id': bridge_id, **bridge_config}, verify=False)
+        data = {
+            '.id': bridge_id, **bridge_config
+        }
+        json_data = json.dumps(data)
+        response = requests.patch(f"https://{host}/rest/interface/bridge/{bridge_id}", auth=HTTPBasicAuth(username, password), data=json_data,
+                                  headers={'Content-Type': 'application/json'}, verify=False)
         return response.json()
 
     except Exception as e:

@@ -1,10 +1,12 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal, Qt
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
 from dhcp_config import Ui_DhcpConfig
 from pool_config import Ui_PoolConfig
+from bridge_config import Ui_BridgeConfig
 import dhcp_queries
+import bridge_queries
 import sys
 import json
 import atexit
@@ -24,12 +26,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.engine = engine 
         self.nodes = nodes
+
+        # Selected
         self.selected_node = []
         self.selected_dhcp = None
+        self.selected_bridge = None
+
+        #Auth
         self.ip_address = None
         self.username = None
         self.password = None
+
+        #Pages
         self.dhcp_config_page = None
+        self.bridge_config_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -42,23 +52,39 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_8.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_8))
 
 
+        # Add Nodes
         self.btn_add.clicked.connect(self.add_node)
         self.btn_config_selected_nodes.clicked.connect(self.configure_selected_nodes)
+        self.routerTable.itemClicked.connect(self.handle_table_item_clicked)
+
+        # DHCP
         if self.selected_dhcp is None:
             self.btn_update_dhcp.setEnabled(False)
             self.btn_delete_dhcp.setEnabled(False)
-
         self.btn_add_dhcp.clicked.connect(self.open_dhcp_config_page) 
         self.btn_update_dhcp.clicked.connect(self.open_dhcp_config_page)
         self.btn_delete_dhcp.clicked.connect(self.open_dhcp_config_page)
 
-
-        self.update_button_status()
-
-        self.routerTable.itemClicked.connect(self.handle_table_item_clicked)
         self.dhcptable.itemClicked.connect(self.handle_dhcptable_item_clicked)
 
+        # Interfaces
+        self.btn_all.click()
+        self.btn_all.clicked.connect(self.refresh_table_interfaces)
+        self.btn_physical.clicked.connect(self.refresh_table_interfaces)
+        self.btn_wireless.clicked.connect(self.refresh_table_interfaces)
+        self.btn_bridge.clicked.connect(self.refresh_table_interfaces)
+        self.btn_add_bridge.setEnabled(False)
+        self.btn_update_bridge.setEnabled(False)
+        self.btn_delete_bridge.setEnabled(False)
 
+        self.btn_add_bridge.clicked.connect(self.open_bridge_config_page)
+        self.btn_update_bridge.clicked.connect(self.open_bridge_config_page)
+        self.btn_delete_bridge.clicked.connect(self.open_bridge_config_page)
+
+        self.interfacesTable.itemClicked.connect(self.handle_inttable_item_clicked)
+
+        # Default
+        self.update_button_status()
         self.btn_page_2.setEnabled(False)
         self.btn_page_3.setEnabled(False)
         self.btn_page_4.setEnabled(False)
@@ -90,10 +116,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.dhcp_config_page.configSaved.connect(self.handleConfigSaved)
             self.dhcp_config_page.show()
 
+    def open_bridge_config_page(self):
+        sender = self.sender()
+        if sender == self.btn_delete_bridge:
+            bridge_queries.delete_bridge(self.username,self.password,self.ip_address,self.selected_bridge['.id'])
+            self.btn_bridge.click()
+            self.refresh_table_interfaces()
+        if sender == self.btn_update_bridge:
+            self.bridge_config_page = BridgePage(self.ip_address,self.username,self.password)
+            self.bridge_config_page.configSaved.connect(self.handleConfigSaved)
+            self.bridge_config_page.update_config(self.selected_bridge)
+            self.bridge_config_page.show()
+        if sender == self.btn_add_bridge:
+            self.bridge_config_page = BridgePage(self.ip_address,self.username,self.password)
+            self.bridge_config_page.configSaved.connect(self.handleConfigSaved)
+            self.bridge_config_page.show()
+            
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
             self.refresh_table_dhcp()
+        if self.bridge_config_page:
+            self.bridge_config_page.hide()
+            self.btn_bridge.click()
+            self.refresh_table_interfaces()
 
     def handle_table_item_clicked(self, item):
 
@@ -117,6 +163,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.password = password
 
         self.refresh_table_dhcp()
+        self.refresh_table_interfaces()
     
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
@@ -124,9 +171,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         dhcp_id = self.dhcptable.item(row,1).text()
         self.selected_dhcp = dhcp_queries.get_specific_dhcp_server(self.username,self.password,self.ip_address,dhcp_id)
+    
+    def handle_inttable_item_clicked(self,item):
+        self.btn_update_bridge.setEnabled(True)
+        self.btn_delete_bridge.setEnabled(True)
+        row = item.row()
+        bridge_id = self.interfacesTable.item(row,1).text()
+        self.selected_bridge = bridge_queries.get_bridge(self.username,self.password,self.ip_address, bridge_id)
 
     def add_node(self):
-        # Create a session
         Session = sessionmaker(bind=engine)
         session = Session()
 
@@ -222,6 +275,51 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         except Exception as e:
             print(f"Error populating DHCP servers: {e}")
 
+    def refresh_table_interfaces(self):
+        sender = self.sender()
+        endpoint = "interface"
+        if sender == self.btn_all:
+            endpoint = "interface"
+            self.btn_add_bridge.setEnabled(False)
+            self.btn_update_bridge.setEnabled(False)
+            self.btn_delete_bridge.setEnabled(False)
+        elif sender == self.btn_physical:
+            endpoint = "interface/ethernet"
+            self.btn_add_bridge.setEnabled(False)
+            self.btn_update_bridge.setEnabled(False)
+            self.btn_delete_bridge.setEnabled(False)
+        elif sender == self.btn_wireless:
+            endpoint = "interface/wireless"
+            self.btn_add_bridge.setEnabled(False)
+            self.btn_update_bridge.setEnabled(False)
+            self.btn_delete_bridge.setEnabled(False)
+        elif sender == self.btn_bridge:
+            endpoint = "interface/bridge"
+            self.btn_add_bridge.setEnabled(True)
+        
+        try:   
+            response = requests.get(f"https://{self.ip_address}/rest/{endpoint}", auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            interface_data = response.json()
+            self.interfacesTable.setRowCount(0)
+
+            for row, interface in enumerate(interface_data):
+                int_id= interface.get('.id', '')           
+                name = interface.get('name', '')
+                mac_address = interface.get('mac-address', '')
+                intType = interface.get('type', '')
+
+                self.interfacesTable.insertRow(row)
+                self.interfacesTable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
+                self.interfacesTable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
+                self.interfacesTable.setItem(row, 2, QtWidgets.QTableWidgetItem(mac_address))
+                self.interfacesTable.setItem(row, 3, QtWidgets.QTableWidgetItem(intType))
+
+
+                for col in range(4):
+                    self.interfacesTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
+        except Exception as e:
+            print(f"Error population interfaces: {e}")
+
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
         with self.engine.connect() as connection:
@@ -236,7 +334,112 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for button in page_buttons:
             button.setEnabled(enable_buttons)
 
+class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(BridgePage,self).__init__()
+        self.setupUi(self)
+        self.ip_address= ip_address
+        self.username=username
+        self.password=password
+        self.selected_bridge = None
+
+        self.btn_apply_bridge.clicked.connect(self.save_configuration)
+        self.interfaceBox = self.findChild(QtWidgets.QGroupBox, "interfaceBox")
+
+        self.update_config(self.selected_bridge)
+        
+
+    
+    def create_interface_checkboxes(self):
+        try:
+            response = requests.get(f"https://{self.ip_address}/rest/interface", auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            interface_data = response.json()    
+            self.selected_interfaces = []
+
+            checkbox_layout = QtWidgets.QVBoxLayout(self.interfaceBox)
+
+            for interface in interface_data:
+                interface_name = interface.get('name', '')
+                if interface.get('type', '') != "bridge":
+                    checkbox = QtWidgets.QCheckBox(interface_name)
+                    checkbox.setChecked(False)  
+                    checkbox.setStyleSheet("QCheckBox { color: white; }")
+                    checkbox_layout.addWidget(checkbox)
+                    checkbox.stateChanged.connect(lambda state, name=interface_name: self.handle_checkbox_state_change(state, name))
+
+            if self.selected_bridge is not None:
+                response_ports = bridge_queries.get_bridge_ports(self.username, self.password, self.ip_address)
+                data_ports = response_ports
+
+                for checkbox in self.interfaceBox.findChildren(QtWidgets.QCheckBox):
+                    interface_name = checkbox.text()
+                    for intf in data_ports:
+                        if intf['bridge'] == self.selected_bridge['name'] and intf['interface'] == interface_name:
+                            checkbox.setChecked(True)
+
+        except Exception as e:
+            print(f"Error creating interface checkboxes: {e}")
+    
+    def handle_checkbox_state_change(self, state, name):
+        if state == QtCore.Qt.Checked:
+            self.selected_interfaces.append(name)
+        elif state == QtCore.Qt.Unchecked:
+            if name in self.selected_interfaces:
+                self.selected_interfaces.remove(name)
+    
+    def update_config(self, bridge_data):
+        self.selected_bridge = bridge_data
+        if self.selected_bridge is not None:
+            self.line_name.setText(self.selected_bridge['name'])
+        self.create_interface_checkboxes()
+
+    def save_configuration(self):
+        name = self.line_name.text()
+
+        params = {
+            'name': name,
+        }
+        if self.selected_bridge == None :
+            response = bridge_queries.add_bridge(self.username,self.password,self.ip_address, params)
+            add_data = response
+
+            for interface in self.selected_interfaces:
+                port_params= {
+                    'interface': interface,
+                    'bridge' : add_data['name']
+                }
+                bridge_queries.add_bridge_port(self.username,self.password,self.ip_address,port_params)
+        else :
+            bridge_queries.get_bridge(self.username,self.password,self.ip_address, self.selected_bridge['.id'])
+
+            response_ports = bridge_queries.get_bridge_ports(self.username,self.password,self.ip_address)
+            data_ports = response_ports
+            for ints in data_ports:
+                if ints['bridge'] == self.selected_bridge['name']:
+
+                    # TEMOS QUE FAZER O SEGUINTE PARA EVITAR O ERRO DE ONTEM :
+                    # Fazer um get aos ports da bridge selecionada para ver os que existem
+                    # comparamos os que existem aos selecionados
+                    # Se um selecionado não existir no portos da bridge, é adicionado
+                    # Se um porto da bridge não existe nos selecionados é apagado
+
+                    bridge_queries.delete_bridge_port(self.username,self.password,self.ip_address,ints['.id'])
+            for interface in self.selected_interfaces:
+                print(self.selected_interfaces)
+                port_params = {
+                    'interface': interface,
+                    'bridge': self.selected_bridge['name']
+                }
+                bridge_queries.add_bridge_port(self.username,self.password,self.ip_address,port_params)
+
+            bridge_queries.edit_bridge(self.username,self.password,self.ip_address,self.selected_bridge['.id'], params)
+
+        self.configSaved.emit()
+        self.close() 
+
 class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
+     
      configSaved = pyqtSignal()
      def __init__(self,ip_address,username,password):
         super(DhcpPage, self).__init__()
@@ -290,14 +493,13 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
             
      def populate_interfaces(self):
         try:
-            response = requests.get(f'https://{self.ip_address}/rest/interface/bridge', auth=HTTPBasicAuth(self.username, self.password), verify=False)
-            if response.status_code == 200:
-                interface_data = response.json() 
+            response = bridge_queries.get_bridges(self.username,self.password,self.ip_address)
+            interface_data = response
 
-                self.interfaces.clear()
-                for interface in interface_data:
-                    interface_name = interface.get('name', '') 
-                    self.interfaces.addItem(interface_name)
+            self.interfaces.clear()
+            for interface in interface_data:
+                interface_name = interface.get('name', '') 
+                self.interfaces.addItem(interface_name)
         except Exception as e:
             print(f"Error populating interfaces: {e}")
 
@@ -344,7 +546,6 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
 
         self.configSaved.emit()
 
-
 class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
     configSaved = pyqtSignal()
     def __init__(self,ip_address, username, password):
@@ -357,7 +558,6 @@ class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
         address = self.line_addresses.text()
 
         self.configSaved.emit()
-
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):
