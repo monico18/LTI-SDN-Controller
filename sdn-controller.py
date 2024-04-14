@@ -8,6 +8,8 @@ from bridge_config import Ui_BridgeConfig
 from wireless_config import Ui_WirelessConfig
 import dhcp_queries
 import bridge_queries
+import wireless_queries
+import security_profile_queries
 import sys
 import json
 import atexit
@@ -44,6 +46,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.dhcp_config_page = None
         self.bridge_config_page = None
         self.wireless_config_page = None
+        self.sec_profile_config_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -88,7 +91,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.interfacesTable.itemClicked.connect(self.handle_inttable_item_clicked)
 
         #Wireless
+        self.btn_wireless_networks.click()
+        self.btn_config_wireless.setEnabled(False)
+        self.btn_update_security_profiles.setEnabled(False)
+        self.btn_delete_security_profiles.setEnabled(False)
 
+        self.wirelesstable.itemClicked.connect(self.handle_wireTable_item_clicked)
+        self.securityTable.itemClicked.connect(self.handle_secTable_item_clicked)
+
+        self.btn_config_wireless.clicked.connect(self.open_wireless_config_page)
 
         # Default
         self.update_button_status()
@@ -138,7 +149,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.bridge_config_page = BridgePage(self.ip_address,self.username,self.password)
             self.bridge_config_page.configSaved.connect(self.handleConfigSaved)
             self.bridge_config_page.show()
-            
+
+    def open_wireless_config_page(self):
+        self.wireless_config_page = WirelessPage(self.ip_address,self.username,self.password)
+        self.wireless_config_page.configSaved.connect(self.handleConfigSaved)
+        self.wireless_config_page.fill_wireless_info(self.selected_wireless)
+        self.wireless_config_page.show()
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -147,6 +164,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.bridge_config_page.hide()
             self.btn_bridge.click()
             self.refresh_table_interfaces()
+        if self.wireless_config_page:
+            self.wireless_config_page.hide()
+            self.refresh_table_wireless()
 
     def handle_table_item_clicked(self, item):
 
@@ -171,6 +191,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.refresh_table_dhcp()
         self.refresh_table_interfaces()
+        self.refresh_table_wireless()
     
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
@@ -186,6 +207,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         bridge_id = self.interfacesTable.item(row,1).text()
         self.selected_bridge = bridge_queries.get_bridge(self.username,self.password,self.ip_address, bridge_id)
 
+    def handle_wireTable_item_clicked(self,item):
+        self.btn_update_security_profiles.setEnabled(False)
+        self.btn_delete_security_profiles.setEnabled(False)
+        self.btn_config_wireless.setEnabled(True)
+        row = item.row()
+        wireless_id = self.wirelesstable.item(row,1).text()
+        self.selected_wireless = wireless_queries.get_wireless_profile(self.username,self.password,self.ip_address,wireless_id)
+
+    def handle_secTable_item_clicked(self,item):
+        self.btn_update_security_profiles.setEnabled(True)
+        self.btn_delete_security_profiles.setEnabled(True)
+        self.btn_config_wireless.setEnabled(False)
+        row = item.row()
+        sec_id = self.securityTable.item(row,1).text()
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -329,9 +364,44 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(f"Error population interfaces: {e}")
 
     def refresh_table_wireless(self):
-        sender = self.sender()
-        if sender == self.btn_wireless_networks:
-            
+        response = wireless_queries.get_wireless_profiles(self.username,self.password,self.ip_address)
+        wireless_data = response
+
+        response = security_profile_queries.get_security_profiles(self.username,self.password,self.ip_address)
+        security_data = response
+
+        self.wirelesstable.setRowCount(0)
+        self.securityTable.setRowCount(0)
+        
+        for row, wireless in enumerate(wireless_data):
+                int_id= wireless.get('.id', '')           
+                name = wireless.get('name', '')
+                ssid = wireless.get('ssid', '')
+                sec = wireless.get('security-profile', '')
+
+                self.wirelesstable.insertRow(row)
+                self.wirelesstable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
+                self.wirelesstable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
+                self.wirelesstable.setItem(row, 2, QtWidgets.QTableWidgetItem(ssid))
+                self.wirelesstable.setItem(row, 3, QtWidgets.QTableWidgetItem(sec))
+
+
+                for col in range(4):
+                    self.wirelesstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
+
+        for row, security in enumerate(security_data):
+            int_id = security.get('.id', '')           
+            name = security.get('name', '')
+            auth = security.get('authentication-types', '')
+
+            self.securityTable.insertRow(row)
+            self.securityTable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
+            self.securityTable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
+            self.securityTable.setItem(row, 2, QtWidgets.QTableWidgetItem(auth))
+
+
+            for col in range(3):
+                self.securityTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
@@ -346,6 +416,75 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         enable_buttons = self.selected_node is not None
         for button in page_buttons:
             button.setEnabled(enable_buttons)
+
+class WirelessPage(QtWidgets.QMainWindow, Ui_WirelessConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(WirelessPage,self).__init__()
+        self.setupUi(self)
+        self.ip_address= ip_address
+        self.username=username
+        self.password=password
+
+        self.btn_apply_wireless.clicked.connect(self.save_configuration)
+    
+    def fill_wireless_info(self, selected_wireless):
+        self.line_name.setText(selected_wireless['name'])
+        self.line_ssid.setText(selected_wireless['ssid'])
+        self.selected_wireless = selected_wireless
+        band = self.selected_wireless['band']
+        data_sec_profiles = security_profile_queries.get_security_profiles(self.username,self.password,self.ip_address)
+
+        if self.selected_wireless['disabled'] == 'false' :
+            self.radio_enable.setChecked(True) 
+        else:
+            self.radio_disable.setChecked(True) 
+    
+        self.combo_mode.clear()
+        self.combo_channel_width.clear()    
+
+        if band.startswith('2'):
+            channel_width_options = ["20/40mhz-eC","20/40mhz-Ce", "20/40mhz-XX"]
+        elif band.startswith('5'):
+            channel_width_options = ["20/40mhz eC","20/40mhz-Ce", "20/40mhz-XX", "20/40/80mhz-Ceee", "20/40/80mhz-eCee", "20/40/80mhz-eeCe",
+                                     "20/40/80mhz-eeeC", "20/40/80mhz-XXXX"]
+        self.combo_channel_width.addItems(channel_width_options)
+
+        for profile in data_sec_profiles:
+            profile_name = profile.get('name', '')
+            self.combo_mode.addItem(profile_name)
+
+        self.combo_mode.setStyleSheet("QComboBox { color: white; }")
+        self.combo_channel_width.setStyleSheet("QComboBox { color: white; }")
+        index = self.combo_mode.findText(self.selected_wireless['security-profile'])
+        if index != -1:
+            self.combo_mode.setCurrentIndex(index)
+        index2 = self.combo_channel_width.findText(self.selected_wireless['channel-width'])
+        if index2 != -1:
+            self.combo_channel_width.setCurrentIndex(index2)
+
+    def save_configuration(self):
+        name = self.line_name.text()
+        ssid = self.line_ssid.text()
+        selected_sec_profile = self.combo_mode.currentText()
+        selected_channel_width = self.combo_channel_width.currentText()
+
+        if self.radio_disable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
+
+        params = {
+            'name': name,
+            'ssid': ssid,
+            'security-profile': selected_sec_profile,
+            'channel-width': selected_channel_width,
+            'disabled': disabled
+        }
+
+        wireless_queries.edit_wireless_profile(self.username,self.password,self.ip_address,self.selected_wireless['.id'], params)
+        self.configSaved.emit()
+        self.close()
 
 class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
     configSaved = pyqtSignal()
@@ -364,7 +503,6 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
 
         self.update_config(self.selected_bridge)
         
-
     
     def create_interface_checkboxes(self):
         try:
