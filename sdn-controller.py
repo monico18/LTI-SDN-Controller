@@ -6,6 +6,7 @@ from dhcp_config import Ui_DhcpConfig
 from pool_config import Ui_PoolConfig
 from bridge_config import Ui_BridgeConfig
 from wireless_config import Ui_WirelessConfig
+from security_profiles_config import Ui_SecurityProfilesConfig
 import dhcp_queries
 import bridge_queries
 import wireless_queries
@@ -91,15 +92,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.interfacesTable.itemClicked.connect(self.handle_inttable_item_clicked)
 
         #Wireless
-        self.btn_wireless_networks.click()
         self.btn_config_wireless.setEnabled(False)
-        self.btn_update_security_profiles.setEnabled(False)
-        self.btn_delete_security_profiles.setEnabled(False)
 
         self.wirelesstable.itemClicked.connect(self.handle_wireTable_item_clicked)
-        self.securityTable.itemClicked.connect(self.handle_secTable_item_clicked)
-
         self.btn_config_wireless.clicked.connect(self.open_wireless_config_page)
+
+        #Security Profiles
+        self.btn_update_security_profiles.setEnabled(False)
+        self.btn_delete_security_profiles.setEnabled(False)
+        self.securityTable.itemClicked.connect(self.handle_secTable_item_clicked)
+        
+        self.btn_add_security_profiles.clicked.connect(self.open_sec_profile_config_page)
+        self.btn_update_security_profiles.clicked.connect(self.open_sec_profile_config_page)
+        self.btn_delete_security_profiles.clicked.connect(self.open_sec_profile_config_page)
+
+
 
         # Default
         self.update_button_status()
@@ -156,6 +163,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.wireless_config_page.fill_wireless_info(self.selected_wireless)
         self.wireless_config_page.show()
 
+    def open_sec_profile_config_page(self):
+        sender = self.sender()
+        if sender == self.btn_delete_security_profiles:
+            security_profile_queries.delete_security_profile(self.username,self.password,self.ip_address,self.selected_sec_profile['.id'])
+            self.refresh_table_wireless()
+        if sender == self.btn_update_security_profiles:
+            self.sec_profile_config_page = SecurityProfilesPage(self.ip_address,self.username,self.password)
+            self.sec_profile_config_page.configSaved.connect(self.handleConfigSaved)
+            self.sec_profile_config_page.fill_with_security_profile(self.selected_sec_profile)
+            self.sec_profile_config_page.show()
+        if sender == self.btn_add_security_profiles:
+            self.sec_profile_config_page = SecurityProfilesPage(self.ip_address,self.username,self.password)
+            self.sec_profile_config_page.configSaved.connect(self.handleConfigSaved)
+            
+            self.sec_profile_config_page.show()
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -166,6 +189,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.refresh_table_interfaces()
         if self.wireless_config_page:
             self.wireless_config_page.hide()
+            self.refresh_table_wireless()
+        if self.sec_profile_config_page:
+            self.sec_profile_config_page.hide()
             self.refresh_table_wireless()
 
     def handle_table_item_clicked(self, item):
@@ -221,6 +247,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_config_wireless.setEnabled(False)
         row = item.row()
         sec_id = self.securityTable.item(row,1).text()
+        self.selected_sec_profile = security_profile_queries.get_security_profile(self.username,self.password,self.ip_address, sec_id)
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -372,7 +399,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.wirelesstable.setRowCount(0)
         self.securityTable.setRowCount(0)
-        
+
         for row, wireless in enumerate(wireless_data):
                 int_id= wireless.get('.id', '')           
                 name = wireless.get('name', '')
@@ -416,6 +443,94 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         enable_buttons = self.selected_node is not None
         for button in page_buttons:
             button.setEnabled(enable_buttons)
+
+class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(SecurityProfilesPage,self).__init__()
+        self.setupUi(self)
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+        self.selected_sec_profile = None
+
+        self.checkbox_wpa.hide()
+        self.mode_options = ["none", "dynamic-keys"]
+        self.combo_mode.addItems(self.mode_options)
+        self.toggle_visibility()
+        
+        self.combo_mode.activated.connect(self.change_mode)
+        self.checkbox_wpa.stateChanged.connect(self.toggle_visibility)
+
+        self.btn_apply_policy.clicked.connect(self.save_configuration)
+
+    def fill_with_security_profile(self,selected_sec_profile):
+        self.line_name.setText(selected_sec_profile['name'])
+        self.line_preShared_key.setText(selected_sec_profile['wpa2-pre-shared-key'])
+        self.selected_sec_profile = selected_sec_profile
+
+        mode_index = self.combo_mode.findText(selected_sec_profile['mode'])
+        if mode_index != -1:
+            self.combo_mode.setCurrentIndex(mode_index)
+        if selected_sec_profile['mode'] == "dynamic-keys":
+            self.checkbox_wpa.show()
+        auth_types = selected_sec_profile['authentication-types']
+        if 'wpa2-psk' in auth_types:
+            self.checkbox_wpa.setChecked(True)
+        else:
+            self.checkbox_wpa.setChecked(False)
+        
+        self.toggle_visibility()
+
+    def change_mode(self):
+        selected_mode = self.combo_mode.currentText()
+
+        if selected_mode == "dynamic-keys": 
+            self.checkbox_wpa.show()
+        else:
+            self.checkbox_wpa.hide()
+        
+        self.toggle_visibility()
+
+    def toggle_visibility(self):
+        if self.checkbox_wpa.isChecked():
+            self.label_3.show()
+            self.line_preShared_key.show()
+            self.auth_types = self.checkbox_wpa.text()
+        else:
+            self.label_3.hide()
+            self.line_preShared_key.hide()
+            self.auth_types = None
+
+    def save_configuration(self):
+        name = self.line_name.text()
+        selected_mode = self.combo_mode.currentText()
+        if self.auth_types is not None:
+            wpa2_pass = self.line_preShared_key.text()
+        
+        if len(wpa2_pass) < 8 :
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Password must be 8 characters or more")
+            msg_box.setStyleSheet("QLabel{ text: white; }")  # Set text color to white
+            msg_box.exec_()
+            return
+        
+        params = {
+            'name' : name,
+            'mode' : selected_mode,
+            'authentication-types' : self.auth_types,
+            'wpa2-pre-shared-key' : wpa2_pass
+        }
+
+        if self.selected_sec_profile is None:
+            security_profile_queries.add_security_profile(self.username,self.password,self.ip_address,params)
+        else :
+            security_profile_queries.edit_security_profile(self.username,self.password,self.ip_address,self.selected_sec_profile['.id'], params)
+
+        self.configSaved.emit()
+        self.close()
 
 class WirelessPage(QtWidgets.QMainWindow, Ui_WirelessConfig):
     configSaved = pyqtSignal()
