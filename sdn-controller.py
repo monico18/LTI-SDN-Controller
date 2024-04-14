@@ -5,6 +5,7 @@ from login import Ui_LoginPage
 from dhcp_config import Ui_DhcpConfig
 from pool_config import Ui_PoolConfig
 from bridge_config import Ui_BridgeConfig
+from wireless_config import Ui_WirelessConfig
 import dhcp_queries
 import bridge_queries
 import sys
@@ -31,6 +32,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.selected_node = []
         self.selected_dhcp = None
         self.selected_bridge = None
+        self.selected_wireless = None
+        self.selected_sec_profile = None
 
         #Auth
         self.ip_address = None
@@ -40,6 +43,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         #Pages
         self.dhcp_config_page = None
         self.bridge_config_page = None
+        self.wireless_config_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -82,6 +86,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_delete_bridge.clicked.connect(self.open_bridge_config_page)
 
         self.interfacesTable.itemClicked.connect(self.handle_inttable_item_clicked)
+
+        #Wireless
+
 
         # Default
         self.update_button_status()
@@ -178,6 +185,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         bridge_id = self.interfacesTable.item(row,1).text()
         self.selected_bridge = bridge_queries.get_bridge(self.username,self.password,self.ip_address, bridge_id)
+
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -320,6 +328,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         except Exception as e:
             print(f"Error population interfaces: {e}")
 
+    def refresh_table_wireless(self):
+        sender = self.sender()
+        if sender == self.btn_wireless_networks:
+            
+
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
         with self.engine.connect() as connection:
@@ -425,7 +438,7 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
                         'bridge': self.selected_bridge['.id']
                     }
                     bridge_queries.add_bridge_port(self.username, self.password, self.ip_address, port_params)
-                    
+
             for port in data_ports:
                 if port['bridge'] == self.selected_bridge['name'] and port['interface'] not in self.selected_interfaces:
                     bridge_queries.delete_bridge_port(self.username, self.password, self.ip_address, port['.id'])
