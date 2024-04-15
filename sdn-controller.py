@@ -7,10 +7,12 @@ from pool_config import Ui_PoolConfig
 from bridge_config import Ui_BridgeConfig
 from wireless_config import Ui_WirelessConfig
 from security_profiles_config import Ui_SecurityProfilesConfig
+from dns_config import Ui_DnsConfig
 import dhcp_queries
 import bridge_queries
 import wireless_queries
 import security_profile_queries
+import dns_queries
 import sys
 import json
 import atexit
@@ -20,7 +22,6 @@ import urllib3
 from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
 from sqlalchemy.orm import sessionmaker
-from librouteros import connect
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -37,6 +38,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.selected_bridge = None
         self.selected_wireless = None
         self.selected_sec_profile = None
+        self.selected_static_dns = None
 
         #Auth
         self.ip_address = None
@@ -48,6 +50,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.bridge_config_page = None
         self.wireless_config_page = None
         self.sec_profile_config_page = None
+        self.static_dns_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -91,13 +94,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.interfacesTable.itemClicked.connect(self.handle_inttable_item_clicked)
 
-        #Wireless
+        # Wireless
         self.btn_config_wireless.setEnabled(False)
 
         self.wirelesstable.itemClicked.connect(self.handle_wireTable_item_clicked)
         self.btn_config_wireless.clicked.connect(self.open_wireless_config_page)
 
-        #Security Profiles
+        # Security Profiles
         self.btn_update_security_profiles.setEnabled(False)
         self.btn_delete_security_profiles.setEnabled(False)
         self.securityTable.itemClicked.connect(self.handle_secTable_item_clicked)
@@ -106,6 +109,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_update_security_profiles.clicked.connect(self.open_sec_profile_config_page)
         self.btn_delete_security_profiles.clicked.connect(self.open_sec_profile_config_page)
 
+        # DNS
+        self.btn_edit_dns.setEnabled(False)
 
 
         # Default
@@ -179,6 +184,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             
             self.sec_profile_config_page.show()
 
+    def open_dns_static_config_page(self):
+        print (None)
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -218,6 +226,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.refresh_table_dhcp()
         self.refresh_table_interfaces()
         self.refresh_table_wireless()
+        self.refresh_table_dns_static()
     
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
@@ -248,6 +257,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         sec_id = self.securityTable.item(row,1).text()
         self.selected_sec_profile = security_profile_queries.get_security_profile(self.username,self.password,self.ip_address, sec_id)
+
+    def handle_dnsTable_item_clicked(self,item):
+        self.btn_edit_dns.setEnabled(True)
+        row = item.row()
+        dns_id = self.dnstable.item(row,1).text()
+        self.selected_static_dns = dns_queries.get_static_dns(self.username,self.password,self.ip_address, dns_id)
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -430,6 +445,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for col in range(3):
                 self.securityTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
+    def refresh_table_dns_static(self):
+        response = dns_queries.get_static_dnses(self.username,self.password,self.ip_address)
+
+        self.dnstable.setRowCount(0)
+
+        for row, dns_static in enumerate(response):
+                int_id= dns_static.get('.id', '')           
+                name = dns_static.get('name', '')
+                ip_add = dns_static.get('address', '')
+
+                self.dnstable.insertRow(row)
+                self.dnstable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
+                self.dnstable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
+                self.dnstable.setItem(row, 2, QtWidgets.QTableWidgetItem(ip_add))
+
+
+                for col in range(3):
+                    self.dnstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
+
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
         with self.engine.connect() as connection:
@@ -444,6 +478,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for button in page_buttons:
             button.setEnabled(enable_buttons)
 
+class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(DnsStaticPage,self).__init__()
+        self.setupUi(self)
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+        self.selected_dns_static = None
+
+    def save_configuration(self):
+        name = self.line_name
+        
 class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
     configSaved = pyqtSignal()
     def __init__(self,ip_address,username,password):

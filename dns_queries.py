@@ -3,7 +3,7 @@ from requests.auth import HTTPBasicAuth
 
 def get_dns(username, password, host):
     try:
-        response = requests.get(f"https://{host}/ip/dns", auth=HTTPBasicAuth(username, password), verify=False)
+        response = requests.get(f"https://{host}/rest/ip/dns", auth=HTTPBasicAuth(username, password), verify=False)
         dns = response.json()
         return dns
     except Exception as e:
@@ -11,42 +11,44 @@ def get_dns(username, password, host):
 
 def edit_dns(username, password, host, dns_config):
     try:
-        response = requests.put(f"https://{host}/ip/dns/set", auth=HTTPBasicAuth(username, password), data=dns_config, verify=False)
+        response = requests.put(f"https://{host}/rest/ip/dns/set", auth=HTTPBasicAuth(username, password), data=dns_config, verify=False)
         return response.json()
     except Exception as e:
         print("Failed to edit DNS:", str(e))
 
 def add_static_dns(username, password, host, name, address):
     try:
-        response = requests.put(f"https://{host}/ip/dns/static", auth=HTTPBasicAuth(username, password), data={'name': name, 'address': address}, verify=False)
+        response = requests.put(f"https://{host}/rest/ip/dns/static", auth=HTTPBasicAuth(username, password), data={'name': name, 'address': address}, verify=False)
         return response.json()
     except Exception as e:
         print("Failed to add static DNS:", str(e))
 
-def remove_static_dns(username, password, host, id):
+def remove_static_dns(username, password, host, dns_id):
     try:
-        response = requests.delete(f"https://{host}/ip/dns/static/{id}", auth=HTTPBasicAuth(username, password), verify=False)
+        response = requests.delete(f"https://{host}/rest/ip/dns/static/{dns_id}", auth=HTTPBasicAuth(username, password), verify=False)
         return response.json()
     except Exception as e:
         print("Failed to remove static DNS:", str(e))
 
-def enable_static_dns(username, password, host, ids):
+def edit_static_dns(username, password, host, dns_id):
     try:
-        response = requests.post(f"https://{host}/ip/dns/static/enable", auth=HTTPBasicAuth(username, password), data={'numbers': ids}, verify=False)
+        response = requests.patch(f"https://{host}/rest/ip/dns/static/{dns_id}", auth=HTTPBasicAuth(username, password), verify=False)
         return response.json()
     except Exception as e:
-        print("Failed to enable static DNS:", str(e))
+        print("Failed to remove static DNS:", str(e))
 
-def disable_static_dns(username, password, host, ids):
+
+def get_static_dnses(username, password, host):
     try:
-        response = requests.post(f"https://{host}/ip/dns/static/disable", auth=HTTPBasicAuth(username, password), data={'numbers': ids}, verify=False)
-        return response.json()
+        response = requests.get(f"https://{host}/rest/ip/dns/static", auth=HTTPBasicAuth(username, password), verify=False)
+        static_dns = response.json()
+        return static_dns
     except Exception as e:
-        print("Failed to disable static DNS:", str(e))
+        print("Failed to get static DNS:", str(e) )
 
-def get_static_dns(username, password, host):
+def get_static_dns(username, password, host, dns_id):
     try:
-        response = requests.get(f"https://{host}/ip/dns/static", auth=HTTPBasicAuth(username, password), verify=False)
+        response = requests.get(f"https://{host}/rest/ip/dns/static/{dns_id}", auth=HTTPBasicAuth(username, password), verify=False)
         static_dns = response.json()
         return static_dns
     except Exception as e:
