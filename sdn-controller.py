@@ -109,9 +109,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_update_security_profiles.clicked.connect(self.open_sec_profile_config_page)
         self.btn_delete_security_profiles.clicked.connect(self.open_sec_profile_config_page)
 
-        # DNS
+        # DNS Static
         self.btn_edit_dns.setEnabled(False)
+        self.btn_delete_dns.setEnabled(False)
 
+        self.dnstable.itemClicked.connect(self.handle_dnsTable_item_clicked)
+        self.btn_add_dns.clicked.connect(self.open_dns_static_config_page)
+        self.btn_edit_dns.clicked.connect(self.open_dns_static_config_page)
+        self.btn_delete_dns.clicked.connect(self.open_dns_static_config_page)
 
         # Default
         self.update_button_status()
@@ -185,7 +190,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.sec_profile_config_page.show()
 
     def open_dns_static_config_page(self):
-        print (None)
+        sender = self.sender()
+        if sender == self.btn_delete_dns:
+            dns_queries.delete_static_dns(self.username,self.password,self.ip_address,self.selected_static_dns['.id'])
+            self.refresh_table_dns_static()
+        if sender == self.btn_edit_dns:
+            self.static_dns_page = DnsStaticPage(self.ip_address,self.username,self.password)
+            self.static_dns_page.configSaved.connect(self.handleConfigSaved)
+            self.static_dns_page.fill_dns_info(self.selected_static_dns)
+            self.static_dns_page.show()
+        if sender == self.btn_add_dns:
+            self.static_dns_page = DnsStaticPage(self.ip_address,self.username,self.password)
+            self.static_dns_page.configSaved.connect(self.handleConfigSaved)
+            self.static_dns_page.show()
 
     def handleConfigSaved(self):
         if self.dhcp_config_page:
@@ -201,6 +218,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.sec_profile_config_page:
             self.sec_profile_config_page.hide()
             self.refresh_table_wireless()
+        if self.static_dns_page:
+            self.static_dns_page.hide()
+            self.refresh_table_dns_static
 
     def handle_table_item_clicked(self, item):
 
@@ -208,7 +228,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.selected_node = self.get_nodes()[row]
 
         ip_address = self.routerTable.item(row, 1).text()
-
         Session = sessionmaker(bind=engine)
         session = Session()
 
@@ -232,14 +251,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_update_dhcp.setEnabled(True)
         self.btn_delete_dhcp.setEnabled(True)
         row = item.row()
-        dhcp_id = self.dhcptable.item(row,1).text()
+        dhcp_id = self.dhcptable.item(row,0).text()
         self.selected_dhcp = dhcp_queries.get_specific_dhcp_server(self.username,self.password,self.ip_address,dhcp_id)
     
     def handle_inttable_item_clicked(self,item):
         self.btn_update_bridge.setEnabled(True)
         self.btn_delete_bridge.setEnabled(True)
         row = item.row()
-        bridge_id = self.interfacesTable.item(row,1).text()
+        bridge_id = self.interfacesTable.item(row,0).text()
         self.selected_bridge = bridge_queries.get_bridge(self.username,self.password,self.ip_address, bridge_id)
 
     def handle_wireTable_item_clicked(self,item):
@@ -247,7 +266,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_delete_security_profiles.setEnabled(False)
         self.btn_config_wireless.setEnabled(True)
         row = item.row()
-        wireless_id = self.wirelesstable.item(row,1).text()
+        wireless_id = self.wirelesstable.item(row,0).text()
         self.selected_wireless = wireless_queries.get_wireless_profile(self.username,self.password,self.ip_address,wireless_id)
 
     def handle_secTable_item_clicked(self,item):
@@ -255,13 +274,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_delete_security_profiles.setEnabled(True)
         self.btn_config_wireless.setEnabled(False)
         row = item.row()
-        sec_id = self.securityTable.item(row,1).text()
+        sec_id = self.securityTable.item(row,0).text()
         self.selected_sec_profile = security_profile_queries.get_security_profile(self.username,self.password,self.ip_address, sec_id)
 
     def handle_dnsTable_item_clicked(self,item):
         self.btn_edit_dns.setEnabled(True)
+        self.btn_delete_dns.setEnabled(True)
         row = item.row()
-        dns_id = self.dnstable.item(row,1).text()
+        dns_id = self.dnstable.item(row,0).text()
         self.selected_static_dns = dns_queries.get_static_dns(self.username,self.password,self.ip_address, dns_id)
 
     def add_node(self):
@@ -308,6 +328,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.selected_nodes_text.setText(f"{current_text}\n {index.data()}")
             self.stackedWidget.setCurrentWidget(self.page_2)
             self.update_button_status()
+        self.servers = dns_queries.get_dns(self.username,self.password,self.ip_address)
+        self.line_servers.setText(self.servers['servers'])
+        self.btn_edit_servers.clicked.connect(self.edit_servers)
 
     def refresh_table(self):
         try:
@@ -471,6 +494,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             nodes = result.fetchall()
         return nodes
 
+    def edit_servers(self):
+        new_server = self.line_servers.text()
+        params = {
+            'servers': new_server
+        }
+
+        dns_queries.update_dns(self.username,self.password,self.ip_address,params)
+
     def update_button_status(self):
         page_buttons = [self.btn_page_2, self.btn_page_3, self.btn_page_4,
                         self.btn_page_5, self.btn_page_6, self.btn_page_7, self.btn_page_8]
@@ -488,8 +519,38 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
         self.password = password
         self.selected_dns_static = None
 
+        self.btn_add_dns.clicked.connect(self.save_configuration)
+
+    def fill_dns_info(self,selected_dns_static):
+        self.line_name.setText(selected_dns_static['name'])
+        self.line_address.setText(selected_dns_static['address'])
+        self.selected_dns_static = selected_dns_static
+        if self.selected_dns_static['disabled'] == 'false' :
+            self.radio_enable.setChecked(True) 
+        else:
+            self.radio_disable.setChecked(True) 
+
     def save_configuration(self):
-        name = self.line_name
+        name = self.line_name.text()
+        add = self.line_address.text()
+
+        if self.radio_disable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
+
+        params = {
+            "name": name,
+            "address": add,
+            "disabled": disabled
+        }
+
+        if self.selected_dns_static is not None :
+            dns_queries.update_static_dns(self.username,self.password,self.ip_address,self.selected_dns_static['.id'], params)
+        else:
+            dns_queries.add_static_dns(self.username,self.password,self.ip_address,params)
+        self.configSaved.emit()
+        self.close()
         
 class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
     configSaved = pyqtSignal()
