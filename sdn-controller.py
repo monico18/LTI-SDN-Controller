@@ -330,6 +330,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.update_button_status()
         self.servers = dns_queries.get_dns(self.username,self.password,self.ip_address)
         self.line_servers.setText(self.servers['servers'])
+        if self.servers['allow-remote-requests'] == 'true' :
+            self.radio_enable.setChecked(True) 
+        else:
+            self.radio_disable.setChecked(True)
         self.btn_edit_servers.clicked.connect(self.edit_servers)
 
     def refresh_table(self):
@@ -496,8 +500,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def edit_servers(self):
         new_server = self.line_servers.text()
+        if self.radio_enable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
         params = {
-            'servers': new_server
+            'servers': new_server,
+            'allow-remote-requests': disabled 
         }
 
         dns_queries.update_dns(self.username,self.password,self.ip_address,params)

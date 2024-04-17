@@ -13,9 +13,8 @@ def get_dns(username, password, host):
 def update_dns(username, password, host, dns_config):
     try:
         json_data = json.dumps(dns_config)
-        response = requests.patch(f"https://{host}/rest/ip/dns", auth=HTTPBasicAuth(username, password), data=json_data,
+        response = requests.post(f"https://{host}/rest/ip/dns/set", auth=HTTPBasicAuth(username, password), data=json_data,
                                  headers={'Content-Type': 'application/json'}, verify=False)
-        print(response.json())
         return response.json()
     except Exception as e:
         print("Failed to edit DNS:", str(e))
