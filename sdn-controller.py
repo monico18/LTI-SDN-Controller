@@ -8,11 +8,13 @@ from bridge_config import Ui_BridgeConfig
 from wireless_config import Ui_WirelessConfig
 from security_profiles_config import Ui_SecurityProfilesConfig
 from dns_config import Ui_DnsConfig
+from ip_address_config import Ui_IpAddConfig
 import dhcp_queries
 import bridge_queries
 import wireless_queries
 import security_profile_queries
 import dns_queries
+import ip_address_queries
 import sys
 import json
 import atexit
@@ -39,6 +41,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.selected_wireless = None
         self.selected_sec_profile = None
         self.selected_static_dns = None
+        self.selected_ip_address = None
 
         #Auth
         self.ip_address = None
@@ -51,6 +54,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.wireless_config_page = None
         self.sec_profile_config_page = None
         self.static_dns_page = None
+        self.ip_address_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -117,6 +121,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_add_dns.clicked.connect(self.open_dns_static_config_page)
         self.btn_edit_dns.clicked.connect(self.open_dns_static_config_page)
         self.btn_delete_dns.clicked.connect(self.open_dns_static_config_page)
+
+        # IP Address
+        self.btn_update_IPAdd.setEnabled(False)
+        self.btn_delete_IPAdd.setEnabled(False)
+
+        self.ipaddresstable.itemClicked.connect(self.handle_ipAddTable_item_clicked)
+        self.btn_add_IPAdd.clicked.connect(self.open_ip_add_config_page)
+        self.btn_update_IPAdd.clicked.connect(self.open_ip_add_config_page)
+        self.btn_delete_IPAdd.clicked.connect(self.open_ip_add_config_page)
 
         # Default
         self.update_button_status()
@@ -204,6 +217,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.static_dns_page.configSaved.connect(self.handleConfigSaved)
             self.static_dns_page.show()
 
+    def open_ip_add_config_page(self):
+        sender = self.sender()
+        if sender == self.btn_delete_IPAdd:
+            ip_address_queries.delete_ip_address(self.username,self.password,self.ip_address,self.selected_ip_address['.id'])
+            self.refresh_table_ip_address()
+        if sender == self.btn_update_IPAdd:
+            self.ip_address_page = IpAddPage(self.ip_address,self.username,self.password)
+            self.ip_address_page.configSaved.connect(self.handleConfigSaved)
+            self.ip_address_page.fill_ip_info(self.selected_ip_address)
+            self.ip_address_page.show()
+        if sender == self.btn_add_IPAdd:
+            self.ip_address_page = IpAddPage(self.ip_address,self.username,self.password)
+            self.ip_address_page.configSaved.connect(self.handleConfigSaved)
+            self.ip_address_page.show()
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -220,7 +248,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.refresh_table_wireless()
         if self.static_dns_page:
             self.static_dns_page.hide()
-            self.refresh_table_dns_static
+            self.refresh_table_dns_static()
+        if self.ip_address_page:
+            self.ip_address_page.hide()
+            self.refresh_table_ip_address()
 
     def handle_table_item_clicked(self, item):
 
@@ -246,6 +277,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.refresh_table_interfaces()
         self.refresh_table_wireless()
         self.refresh_table_dns_static()
+        self.refresh_table_ip_address()
     
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
@@ -283,6 +315,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         dns_id = self.dnstable.item(row,0).text()
         self.selected_static_dns = dns_queries.get_static_dns(self.username,self.password,self.ip_address, dns_id)
+
+    def handle_ipAddTable_item_clicked(self,item):
+        self.btn_update_IPAdd.setEnabled(True)
+        self.btn_delete_IPAdd.setEnabled(True)
+        row = item.row()
+        ip_id = self.ipaddresstable.item(row,0).text()
+        self.selected_ip_address = ip_address_queries.get_ip_address(self.username,self.password,self.ip_address,ip_id)
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -491,6 +530,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 for col in range(3):
                     self.dnstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
+    def refresh_table_ip_address(self):
+        response = ip_address_queries.get_ip_addresses(self.username,self.password,self.ip_address)
+
+        self.ipaddresstable.setRowCount(0)
+
+        for row, wireless in enumerate(response):
+                int_id= wireless.get('.id', '')           
+                interface = wireless.get('interface', '')
+                address = wireless.get('address', '')
+                network = wireless.get('network', '')
+
+                self.ipaddresstable.insertRow(row)
+                self.ipaddresstable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
+                self.ipaddresstable.setItem(row, 1, QtWidgets.QTableWidgetItem(interface))
+                self.ipaddresstable.setItem(row, 2, QtWidgets.QTableWidgetItem(address))
+                self.ipaddresstable.setItem(row, 3, QtWidgets.QTableWidgetItem(network))
+
+
+                for col in range(4):
+                    self.ipaddresstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
+
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
         with self.engine.connect() as connection:
@@ -518,6 +578,66 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for button in page_buttons:
             button.setEnabled(enable_buttons)
 
+class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(IpAddPage,self).__init__()
+        self.setupUi(self)
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+        self.selected_ip_address = None
+
+        self.btn_apply_IPAdd.clicked.connect(self.save_configuration)
+        self.populate_interfaces()
+    
+    def populate_interfaces(self):
+        try:
+            response = requests.get(f"https://{self.ip_address}/rest/interface", auth=HTTPBasicAuth(self.username, self.password), verify=False)
+            interface_data = response.json()
+
+            self.interfaces.clear()
+            for interface in interface_data:
+                interface_name = interface.get('name', '') 
+                self.interfaces.addItem(interface_name)
+        except Exception as e:
+            print(f"Error populating interfaces: {e}")
+
+    def fill_ip_info(self,selected_ip_address):
+        self.line_ip.setText(selected_ip_address['address'])
+        self.selected_ip_address = selected_ip_address
+        mode_index = self.interfaces.findText(selected_ip_address['interface'])
+        if mode_index != -1:
+            self.interfaces.setCurrentIndex(mode_index)
+        if self.selected_ip_address['disabled'] == 'false' :
+            self.radio_enable.setChecked(True) 
+        else:
+            self.radio_disable.setChecked(True)
+
+    def save_configuration(self):
+        ip = self.line_ip.text()
+        interface = self.interfaces.currentText()
+
+        if self.radio_disable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
+        
+        params = {
+            "address" : ip,
+            "interface" : interface,
+            "disabled": disabled
+        }
+
+        if self.selected_ip_address is not None:
+            ip_address_queries.edit_ip_address(self.username,self.password,self.ip_address,self.selected_ip_address['.id'], params)
+        else:
+            ip_address_queries.add_ip_address(self.username,self.password,self.ip_address,params)
+
+        self.configSaved.emit()
+        self.close()
+
+    
 class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
     configSaved = pyqtSignal()
     def __init__(self,ip_address,username,password):
