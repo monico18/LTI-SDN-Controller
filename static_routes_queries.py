@@ -27,7 +27,8 @@ def edit_static_route(username, password, host, static_route_id, static_route_co
             '.id': static_route_id, **static_route_config
         }
         json_data = json.dumps(data)
-        response = requests.patch(f"https://{host}/rest/ip/route/{static_route_id}", auth=HTTPBasicAuth(username, password), data=json_data, verify=False)
+        response = requests.patch(f"https://{host}/rest/ip/route/{static_route_id}", auth=HTTPBasicAuth(username, password), data=json_data, 
+                                  headers={'Content-Type': 'application/json'},verify=False)
         return response.json()
 
     except Exception as e:

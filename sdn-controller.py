@@ -10,6 +10,7 @@ from security_profiles_config import Ui_SecurityProfilesConfig
 from dns_config import Ui_DnsConfig
 from ip_address_config import Ui_IpAddConfig
 from static_routes_config import Ui_StaticRoutesConfig
+from vpn_peers_config import Ui_VPNPeersConfig
 import dhcp_queries
 import bridge_queries
 import wireless_queries
@@ -17,6 +18,7 @@ import security_profile_queries
 import dns_queries
 import ip_address_queries
 import static_routes_queries
+import wireguard_queries
 import sys
 import json
 import atexit
@@ -45,6 +47,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.selected_static_dns = None
         self.selected_ip_address = None
         self.selected_static_route = None
+        self.selected_vpn_peer = None
 
         #Auth
         self.ip_address = None
@@ -59,6 +62,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.static_dns_page = None
         self.ip_address_page = None
         self.static_route_page = None
+        self.vpn_peers_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -143,6 +147,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_add_routes.clicked.connect(self.open_static_route_config_page)
         self.btn_update_routes.clicked.connect(self.open_static_route_config_page)
         self.btn_delete_routes.clicked.connect(self.open_static_route_config_page)
+
+        #VPN
+        self.btn_update_peer.setEnabled(False)
+        self.btn_delete_peer.setEnabled(False)
+
+        self.vpnTable.clicked.connect(self.handler_vpnPeerTable_item_clicked)
+        self.btn_add_peer.clicked.connect(self.open_vpn_peer_config_page)
+        self.btn_update_peer.clicked.connect(self.open_vpn_peer_config_page)
+        self.btn_delete_peer.clicked.connect(self.open_vpn_peer_config_page)
 
         # Default
         self.update_button_status()
@@ -260,6 +273,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.static_route_page.configSaved.connect(self.handleConfigSaved)
             self.static_route_page.show()
 
+    def open_vpn_peer_config_page(self):
+        sender = self.sender()
+        if sender == self.btn_delete_peer:
+            wireguard_queries.delete_wireguard_peer(self.username,self.password,self.ip_address,self.selected_vpn_peer['.id'])
+            self.refresh_table_vpn_peers()
+        if sender == self.btn_update_peer:
+            self.vpn_peers_page = VpnPeersPage(self.ip_address,self.username,self.password)
+            self.vpn_peers_page.configSaved.connect(self.handleConfigSaved)
+
+            self.vpn_peers_page.show()
+        if sender == self.btn_add_peer:
+            self.vpn_peers_page = VpnPeersPage(self.ip_address,self.username,self.password)
+            self.vpn_peers_page.configSaved.connect(self.handleConfigSaved)
+            self.vpn_peers_page.show()
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -283,6 +311,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.static_route_page:
             self.static_route_page.hide()
             self.refresh_table_static_routes()
+        if self.vpn_peers_page:
+            self.vpn_peers_page.hide()
+            self.refresh_table_vpn_peers()
 
     def handle_table_item_clicked(self, item):
 
@@ -310,7 +341,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.refresh_table_dns_static()
         self.refresh_table_ip_address()
         self.refresh_table_static_routes()
-    
+        self.refresh_table_vpn_peers()
+
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
         self.btn_delete_dhcp.setEnabled(True)
@@ -361,6 +393,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         route_id = self.staticroutestable.item(row,0).text()
         self.selected_static_route = static_routes_queries.get_static_route(self.username,self.password,self.ip_address,route_id)
+
+    def handler_vpnPeerTable_item_clicked(self,item):
+        self.btn_update_peer.setEnabled(True)
+        self.btn_delete_peer.setEnabled(True)
+        row = item.row()
+        vpn_id = self.vpnTable.item(row,0).text()
+        self.selected_vpn_peer = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,vpn_id)
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -631,6 +670,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 for col in range(3):
                     self.staticroutestable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)      
 
+    def refresh_table_vpn_peers(self):
+        response = wireguard_queries.get_wireguard_peers(self.username,self.password,self.ip_address)
+
+        self.vpnTable.setRowCount(0)
+
+        for row, vpn in enumerate(response):
+                route_id= vpn.get('.id', '')           
+                alw_add = vpn.get('allowed-address', '')
+                interface = vpn.get('interface', '')
+
+                self.vpnTable.insertRow(row)
+                self.vpnTable.setItem(row, 0, QtWidgets.QTableWidgetItem(route_id))
+                self.vpnTable.setItem(row, 1, QtWidgets.QTableWidgetItem(alw_add))
+                self.vpnTable.setItem(row, 2, QtWidgets.QTableWidgetItem(interface))
+
+                for col in range(3):
+                    item = self.vpnTable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+
+                for col in range(3):
+                    self.vpnTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch) 
+
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
         with self.engine.connect() as connection:
@@ -657,6 +719,56 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         enable_buttons = self.selected_node is not None
         for button in page_buttons:
             button.setEnabled(enable_buttons)
+
+class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(VpnPeersPage,self).__init__()
+        self.setupUi(self)
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+        self.selected_vpn_peer = None
+
+        self.btn_apply_peer.clicked.connect(self.save_configuration)
+        self.populate_interfaces()
+
+    def populate_interfaces(self):
+        try:
+            response = wireguard_queries.get_wireguard_profiles(self.username,self.password,self.ip_address)
+            interface_data = response
+
+            self.interfaces.clear()
+            for interface in interface_data:
+                interface_name = interface.get('name', '') 
+                self.interfaces.addItem(interface_name)
+        except Exception as e:
+            print(f"Error populating interfaces: {e}")
+
+    def save_configuration(self):
+        interface = self.interfaces.currentText()
+        pub_key = self.line_pub_key.text()
+        alw_add = self.line_dst_add.text()
+
+        if self.radio_disable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
+
+        params = {
+            "interface" : interface,
+            "allowed-address" : alw_add,
+            "public-key" : pub_key,
+            "disabled" : disabled
+        }
+        
+        if self.selected_vpn_peer is not None:
+            wireguard_queries.edit_wireguard_peer(self.username,self.password,self.ip_address,self.selected_vpn_peer['.id'], params)
+        else:
+            wireguard_queries.add_wireguard_peer(self.username,self.password,self.ip_address,params)
+
+        self.configSaved.emit()
+        self.close()
 
 class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
     configSaved = pyqtSignal()
