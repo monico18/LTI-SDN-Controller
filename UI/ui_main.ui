@@ -596,7 +596,7 @@
                 <string notr="true"/>
                </property>
                <property name="text">
-                <string>Dashboard</string>
+                <string>VPN</string>
                </property>
               </widget>
              </item>
@@ -10765,6 +10765,21 @@
                 <attribute name="verticalHeaderVisible">
                  <bool>false</bool>
                 </attribute>
+                <column>
+                 <property name="text">
+                  <string>Id</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Dest Add</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Gateway</string>
+                 </property>
+                </column>
                </widget>
               </item>
              </layout>

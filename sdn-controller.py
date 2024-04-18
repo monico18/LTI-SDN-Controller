@@ -9,12 +9,14 @@ from wireless_config import Ui_WirelessConfig
 from security_profiles_config import Ui_SecurityProfilesConfig
 from dns_config import Ui_DnsConfig
 from ip_address_config import Ui_IpAddConfig
+from static_routes_config import Ui_StaticRoutesConfig
 import dhcp_queries
 import bridge_queries
 import wireless_queries
 import security_profile_queries
 import dns_queries
 import ip_address_queries
+import static_routes_queries
 import sys
 import json
 import atexit
@@ -42,6 +44,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.selected_sec_profile = None
         self.selected_static_dns = None
         self.selected_ip_address = None
+        self.selected_static_route = None
 
         #Auth
         self.ip_address = None
@@ -55,6 +58,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.sec_profile_config_page = None
         self.static_dns_page = None
         self.ip_address_page = None
+        self.static_route_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -130,6 +134,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_add_IPAdd.clicked.connect(self.open_ip_add_config_page)
         self.btn_update_IPAdd.clicked.connect(self.open_ip_add_config_page)
         self.btn_delete_IPAdd.clicked.connect(self.open_ip_add_config_page)
+
+        # Static Routes
+        self.btn_update_routes.setEnabled(False)
+        self.btn_delete_routes.setEnabled(False)
+
+        self.staticroutestable.clicked.connect(self.handle_staticRoutesTable_item_clicked)
+        self.btn_add_routes.clicked.connect(self.open_static_route_config_page)
+        self.btn_update_routes.clicked.connect(self.open_static_route_config_page)
+        self.btn_delete_routes.clicked.connect(self.open_static_route_config_page)
 
         # Default
         self.update_button_status()
@@ -232,6 +245,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.ip_address_page.configSaved.connect(self.handleConfigSaved)
             self.ip_address_page.show()
 
+    def open_static_route_config_page(self):
+        sender = self.sender()
+        if sender == self.btn_delete_routes:
+            static_routes_queries.delete_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'])
+            self.refresh_table_static_routes()
+        if sender == self.btn_update_routes:
+            self.static_route_page = StaticRoutePage(self.ip_address,self.username,self.password)
+            self.static_route_page.configSaved.connect(self.handleConfigSaved)
+            self.static_route_page.fill_static_route_info(self.selected_static_route)
+            self.static_route_page.show()
+        if sender == self.btn_add_routes:
+            self.static_route_page = StaticRoutePage(self.ip_address,self.username,self.password)
+            self.static_route_page.configSaved.connect(self.handleConfigSaved)
+            self.static_route_page.show()
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -252,6 +280,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.ip_address_page:
             self.ip_address_page.hide()
             self.refresh_table_ip_address()
+        if self.static_route_page:
+            self.static_route_page.hide()
+            self.refresh_table_static_routes()
 
     def handle_table_item_clicked(self, item):
 
@@ -278,6 +309,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.refresh_table_wireless()
         self.refresh_table_dns_static()
         self.refresh_table_ip_address()
+        self.refresh_table_static_routes()
     
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
@@ -322,6 +354,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         ip_id = self.ipaddresstable.item(row,0).text()
         self.selected_ip_address = ip_address_queries.get_ip_address(self.username,self.password,self.ip_address,ip_id)
+
+    def handle_staticRoutesTable_item_clicked(self,item):
+        self.btn_update_routes.setEnabled(True)
+        self.btn_delete_routes.setEnabled(True)
+        row = item.row()
+        route_id = self.staticroutestable.item(row,0).text()
+        self.selected_static_route = static_routes_queries.get_static_route(self.username,self.password,self.ip_address,route_id)
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -415,12 +454,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.dhcptable.setItem(row, 3, QtWidgets.QTableWidgetItem(lease_time))
                 self.dhcptable.setItem(row, 4, QtWidgets.QTableWidgetItem(address_pool))
                 self.dhcptable.setItem(row, 5, QtWidgets.QTableWidgetItem(state))
-                self.dhcptable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-                self.dhcptable.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
-                self.dhcptable.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
-                self.dhcptable.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
-                self.dhcptable.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.Stretch)
-                self.dhcptable.horizontalHeader().setSectionResizeMode(5, QtWidgets.QHeaderView.Stretch)
+
+                for col in range(6):
+                    item = self.dhcptable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+                for col in range(6):
+                    self.dhcptable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
 
         except Exception as e:
@@ -465,7 +505,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.interfacesTable.setItem(row, 2, QtWidgets.QTableWidgetItem(mac_address))
                 self.interfacesTable.setItem(row, 3, QtWidgets.QTableWidgetItem(intType))
 
-
+                for col in range(4):
+                    item = self.interfacesTable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
                 for col in range(4):
                     self.interfacesTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
         except Exception as e:
@@ -493,7 +536,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.wirelesstable.setItem(row, 2, QtWidgets.QTableWidgetItem(ssid))
                 self.wirelesstable.setItem(row, 3, QtWidgets.QTableWidgetItem(sec))
 
-
+                for col in range(4):
+                    item = self.wirelesstable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
                 for col in range(4):
                     self.wirelesstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -507,7 +553,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.securityTable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
             self.securityTable.setItem(row, 2, QtWidgets.QTableWidgetItem(auth))
 
-
+            for col in range(3):
+                    item = self.securityTable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
             for col in range(3):
                 self.securityTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -526,6 +575,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.dnstable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
                 self.dnstable.setItem(row, 2, QtWidgets.QTableWidgetItem(ip_add))
 
+                for col in range(3):
+                    item = self.dnstable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
 
                 for col in range(3):
                     self.dnstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
@@ -547,9 +600,36 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ipaddresstable.setItem(row, 2, QtWidgets.QTableWidgetItem(address))
                 self.ipaddresstable.setItem(row, 3, QtWidgets.QTableWidgetItem(network))
 
+                for col in range(4):
+                    item = self.ipaddresstable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
 
                 for col in range(4):
                     self.ipaddresstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
+
+    def refresh_table_static_routes(self):
+        response = static_routes_queries.get_static_routes(self.username,self.password,self.ip_address)
+
+        self.staticroutestable.setRowCount(0)
+        
+        for row, route in enumerate(response):
+                route_id= route.get('.id', '')           
+                gateway = route.get('gateway', '')
+                dst_address = route.get('dst-address', '')
+
+                self.staticroutestable.insertRow(row)
+                self.staticroutestable.setItem(row, 0, QtWidgets.QTableWidgetItem(route_id))
+                self.staticroutestable.setItem(row, 1, QtWidgets.QTableWidgetItem(dst_address))
+                self.staticroutestable.setItem(row, 2, QtWidgets.QTableWidgetItem(gateway))
+
+                for col in range(3):
+                    item = self.staticroutestable.item(row, col)
+                    if item:
+                        item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+
+                for col in range(3):
+                    self.staticroutestable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)      
 
     def get_nodes(self):
         s = self.nodes.select().where(self.nodes.c.id > 0)
@@ -577,6 +657,51 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         enable_buttons = self.selected_node is not None
         for button in page_buttons:
             button.setEnabled(enable_buttons)
+
+class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
+    configSaved = pyqtSignal()
+    def __init__(self,ip_address,username,password):
+        super(StaticRoutePage,self).__init__()
+        self.setupUi(self)
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+        self.selected_static_route = None
+
+        self.btn_apply_route.clicked.connect(self.save_configuration)
+
+    def fill_static_route_info(self,selected_static_route):
+        self.line_dst_add.setText(selected_static_route['dst-address'])
+        self.line_gateway.setText(selected_static_route['gateway'])
+        self.selected_static_route = selected_static_route
+
+        if self.selected_static_route['disabled'] == 'false' :
+            self.radio_enable.setChecked(True)
+        else:
+            self.radio_disable.setChecked(True)
+
+    def save_configuration(self):
+        address = self.line_dst_add.text()
+        gateway = self.line_gateway.text()
+
+        if self.radio_disable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
+
+        params = {
+            "dst-address" : address,
+            "gateway" : gateway,
+            "disabled" : disabled,
+        }
+
+        if self.selected_static_route is not None:
+            static_routes_queries.edit_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'], params)
+        else:
+            static_routes_queries.add_static_route(self.username,self.password,self.ip_address,params)
+
+        self.configSaved.emit()
+        self.close()
 
 class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
     configSaved = pyqtSignal()
@@ -637,7 +762,6 @@ class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
         self.configSaved.emit()
         self.close()
 
-    
 class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
     configSaved = pyqtSignal()
     def __init__(self,ip_address,username,password):
