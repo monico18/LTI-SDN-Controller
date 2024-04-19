@@ -29,7 +29,7 @@ def edit_dhcp_server(username, password, host, dhcp_server_id, dhcp_server_confi
         json_data = json.dumps(data)
         response = requests.patch(url, auth=HTTPBasicAuth(username, password), data=json_data, 
                                   headers={'Content-Type': 'application/json'},verify=False)
-        return response.json()
+        return response
 
     except Exception as e:
         print("Failed to edit DHCP server:", str(e))

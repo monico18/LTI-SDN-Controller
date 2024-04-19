@@ -1,5 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
+import json
 
 def get_pools(username, password, host):
     try:
@@ -12,7 +13,8 @@ def get_pools(username, password, host):
 
 def add_pool(username, password, host, pool_config):
     try:
-        response = requests.put(f"https://{host}/rest/ip/pool", auth=HTTPBasicAuth(username, password), data=pool_config, verify=False)
+        data = json.dumps(pool_config)
+        response = requests.put(f"https://{host}/rest/ip/pool", auth=HTTPBasicAuth(username, password), data=data, verify=False)
         return response.json()
 
     except Exception as e:
@@ -27,7 +29,12 @@ def delete_pool(username, password, host, pool_id):
 
 def edit_pool(username, password, host, pool_id, pool_config):
     try:
-        response = requests.patch(f"https://{host}/rest/ip/pool/{pool_id}", auth=HTTPBasicAuth(username, password), data={'.id': pool_id, **pool_config}, verify=False)
+        data = {
+            '.id': pool_id, **pool_config
+        }
+        json_data = json.dumps(data)
+        response = requests.patch(f"https://{host}/rest/ip/pool/{pool_id}", auth=HTTPBasicAuth(username, password), 
+                                  data=json_data,headers={'Content-Type': 'application/json'}, verify=False)
         return response.json()
 
     except Exception as e:

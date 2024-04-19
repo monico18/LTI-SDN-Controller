@@ -19,6 +19,7 @@ import dns_queries
 import ip_address_queries
 import static_routes_queries
 import wireguard_queries
+import pool_queries
 import sys
 import json
 import atexit
@@ -515,6 +516,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.dhcptable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+
+                if dhcp_server.get('disabled','') == "true":
+                    for col in range(6):
+                        item = self.dhcptable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
+
                 for col in range(6):
                     self.dhcptable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -565,6 +573,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.interfacesTable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+                if interface.get('disabled','') == "true":
+                    for col in range(4):
+                        item = self.interfacesTable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
+                
                 for col in range(4):
                     self.interfacesTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
         except Exception as e:
@@ -596,6 +610,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.wirelesstable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+                if wireless.get('disabled','') == "true":
+                    for col in range(4):
+                        item = self.wirelesstable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
                 for col in range(4):
                     self.wirelesstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -613,6 +632,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.securityTable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+            if security.get('disabled','') == "true":
+                    for col in range(4):
+                        item = self.securityTable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
             for col in range(3):
                 self.securityTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -636,6 +660,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
 
+                if dns_static.get('disabled','') == "true":
+                    for col in range(3):
+                        item = self.dnstable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
                 for col in range(3):
                     self.dnstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -644,11 +673,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.ipaddresstable.setRowCount(0)
 
-        for row, wireless in enumerate(response):
-                int_id= wireless.get('.id', '')           
-                interface = wireless.get('interface', '')
-                address = wireless.get('address', '')
-                network = wireless.get('network', '')
+        for row, ipadd in enumerate(response):
+                int_id= ipadd.get('.id', '')           
+                interface = ipadd.get('interface', '')
+                address = ipadd.get('address', '')
+                network = ipadd.get('network', '')
 
                 self.ipaddresstable.insertRow(row)
                 self.ipaddresstable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
@@ -660,7 +689,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.ipaddresstable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
-
+                if ipadd.get('disabled','') == "true":
+                    for col in range(4):
+                        item = self.ipaddresstable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
                 for col in range(4):
                     self.ipaddresstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
@@ -683,6 +716,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.staticroutestable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+                if route.get('disabled','') == "true":
+                    for col in range(3):
+                        item = self.staticroutestable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
 
                 for col in range(3):
                     self.staticroutestable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)      
@@ -706,7 +744,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item = self.vpnTable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
-
+                if vpn.get('disabled','') == "true":
+                    for col in range(3):
+                        item = self.vpnTable.item(row, col)
+                        if item:
+                            item.setBackground(QtGui.QColor("#b30b05"))
                 for col in range(3):
                     self.vpnTable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch) 
 
@@ -1065,6 +1107,7 @@ class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
             msg_box.exec_()
             return
         
+        
         params = {
             'name' : name,
             'mode' : selected_mode,
@@ -1171,8 +1214,6 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
 
         self.btn_apply_bridge.clicked.connect(self.save_configuration)
         self.interfaceBox = self.findChild(QtWidgets.QGroupBox, "interfaceBox")
-
-        self.update_config(self.selected_bridge)
         
     
     def create_interface_checkboxes(self):
@@ -1214,15 +1255,26 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
     
     def update_config(self, bridge_data):
         self.selected_bridge = bridge_data
-        if self.selected_bridge is not None:
-            self.line_name.setText(self.selected_bridge['name'])
+        self.line_name.setText(self.selected_bridge['name'])
+
+        if self.selected_bridge['disabled'] == 'false' :
+            self.radio_enable.setChecked(True) 
+        else:
+            self.radio_disable.setChecked(True)
+
         self.create_interface_checkboxes()
 
     def save_configuration(self):
         name = self.line_name.text()
+        
+        if self.radio_disable.isChecked():
+            disabled = "true"
+        else:
+            disabled = "false"
 
         params = {
             'name': name,
+            'disabled': disabled
         }
         if self.selected_bridge == None :
             response = bridge_queries.add_bridge(self.username,self.password,self.ip_address, params)
@@ -1231,7 +1283,7 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
             for interface in self.selected_interfaces:
                 port_params= {
                     'interface': interface,
-                    'bridge' : add_data['name']
+                    'bridge' : add_data['name'],
                 }
                 bridge_queries.add_bridge_port(self.username,self.password,self.ip_address,port_params)
         else :
@@ -1252,8 +1304,9 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
                 if port['bridge'] == self.selected_bridge['name'] and port['interface'] not in self.selected_interfaces:
                     bridge_queries.delete_bridge_port(self.username, self.password, self.ip_address, port['.id'])
 
-            if name != self.selected_bridge['name']:
+            if name != self.selected_bridge['name'] or disabled != self.selected_bridge['disabled']:
                     bridge_queries.edit_bridge(self.username, self.password, self.ip_address, self.selected_bridge['.id'], params)
+
 
         self.configSaved.emit()
         self.close() 
@@ -1273,14 +1326,25 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
 
         self.btn_update_dhcp.clicked.connect(self.saveConfig)
         self.btn_add_pool.clicked.connect(self.open_pool_config_page)
+        self.btn_remove_pool.clicked.connect(self.open_pool_config_page)
         self.populate_interfaces()
         self.populate_address_pool()
 
      def open_pool_config_page(self):
-        if not self.pool_config_page:
+        sender = self.sender()
+        if sender == self.btn_remove_pool:
+            address_pool_text = self.address_pool.currentText()
+            address_pool_parts = address_pool_text.split(" - ")
+            if len(address_pool_parts) > 1:
+                address_pool_string_part = address_pool_parts[0]
+            else:
+                address_pool_string_part = ""
+            pool_queries.delete_pool(self.username,self.password,self.ip_address,address_pool_string_part)
+            self.populate_address_pool( )
+        if sender == self.btn_add_pool:
             self.pool_config_page = PoolPage(self.ip_address, self.username, self.password)
             self.pool_config_page.configSaved.connect(self.handleConfigSaved)
-        self.dhcp_config_page.show()
+            self.pool_config_page.show()
 
      def parse_lease_time(self,lease_time_str):
         duration = lease_time_str.strip().lower()  
@@ -1309,6 +1373,7 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
 
      def handleConfigSaved(self):
         if self.pool_config_page:
+            self.populate_address_pool()
             self.pool_config_page.hide()
             
      def populate_interfaces(self):
@@ -1326,12 +1391,13 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
      def populate_address_pool(self):
          try:
              response = requests.get(f'https://{self.ip_address}/rest/ip/pool', auth=HTTPBasicAuth(self.username, self.password), verify=False)
-             if response.status_code == 200:
+             if response.status_code >= 200 and response.status_code < 300:
                 address_pool_data = response.json()
 
                 self.address_pool.clear()
                 for addresspool in address_pool_data:
-                    self.address_pool.addItem(addresspool['name'])
+                    self.address_pool.addItem(addresspool['.id'] + " - " + addresspool['name'])
+                    
          except Exception as e:
             print(f"Error populating address_pools: {e}")
              
@@ -1340,12 +1406,19 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         interface = self.interfaces.currentText()
         time = self.lease_time.time().toString("hh:mm:ss")
         if self.radio_disable.isChecked():
-            disabled = True
+            disabled = "true"
         else:
-            disabled = False
+            disabled = "false"
 
-        address_pool = self.address_pool.currentText()
+        address_pool_text = self.address_pool.currentText()
 
+        address_pool_parts = address_pool_text.split(" - ")
+
+        if len(address_pool_parts) > 1:
+            address_pool_string_part = address_pool_parts[1]
+        else:
+            address_pool_string_part = ""
+        
         if time == "00:00:00":
             msg_box = QtWidgets.QMessageBox()
             msg_box.setIcon(QtWidgets.QMessageBox.Critical)
@@ -1353,27 +1426,30 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
             msg_box.setText("Invalid time: Lease time cannot be zero.")
             msg_box.exec_()
             return
-
+        
+        response_dns = dns_queries.get_dns(self.username,self.password,self.ip_address)
+        dns_server = response_dns['servers']
 
         params = {
-            'address-pool': address_pool,
+            'address-pool': address_pool_string_part,
             'interface': interface,
             'name': name,
             'lease-time': time,
-            'disabled': disabled
+            'disabled': disabled,
+            'server-address': dns_server
         }
 
         if self.id != None:
             response = dhcp_queries.edit_dhcp_server(self.username,self.password,self.ip_address,self.id,params)
-            if response.status_code != 201:
+            if response.status_code < 200 or response.status_code >= 300:
                 msg_box = QtWidgets.QMessageBox()
                 msg_box.setIcon(QtWidgets.QMessageBox.Critical)
                 msg_box.setWindowTitle("Error")
-                msg_box.setText(response.json())
+                msg_box.setText(f"{response.json()['detail']}")
                 msg_box.exec_()
         else :
             response = dhcp_queries.add_dhcp_server(self.username,self.password,self.ip_address,params)
-            if response != 201:
+            if response.status_code < 200 or response.status_code >= 300:
                 msg_box = QtWidgets.QMessageBox()
                 msg_box.setIcon(QtWidgets.QMessageBox.Critical)
                 msg_box.setWindowTitle("Error")
@@ -1387,13 +1463,40 @@ class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
     def __init__(self,ip_address, username, password):
         super(PoolPage,self).__init__()
         self.setupUi(self)
-        self.btn_apply_pool.clicked.connect(self.saveConfig)
+        self.ip_address= ip_address
+        self.username=username
+        self.password=password
 
-    def saveConfig(self):
+        self.btn_apply_pool.clicked.connect(self.save_configuration)
+
+    def is_valid_range(self,range):
+        ip_cidr_pattern  = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+
+        ip_range_pattern = r'^(\d{1,3}\.){3}\d{1,3}-(\d{1,3}\.){3}\d{1,3}$'
+
+        if re.match(ip_cidr_pattern, range) or re.match(ip_range_pattern, range):
+            return True
+        else:
+            return False
+        
+    def save_configuration(self):
         name = self.line_name.text()
-        address = self.line_addresses.text()
-
+        ranges = self.line_addresses.text()
+        
+        if not self.is_valid_range(ranges):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please enter a valid IP range in the format xxx.xxx.xxx.xxx/xx \n or xxx.xxx.xxx.xxx-xxx.xxx.xxx.xxx")
+            msg_box.exec_()
+            return
+        params =  {
+            'name' : name,
+            'ranges' : ranges
+        }
+        pool_queries.add_pool(self.username,self.password,self.ip_address,params)
         self.configSaved.emit()
+        self.close() 
 
 class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
     def __init__(self):

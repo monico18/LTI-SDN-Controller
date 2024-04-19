@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>721</width>
-    <height>465</height>
+    <width>480</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -395,8 +395,8 @@
   <widget class="QPushButton" name="btn_apply_pool">
    <property name="geometry">
     <rect>
-     <x>360</x>
-     <y>350</y>
+     <x>70</x>
+     <y>250</y>
      <width>111</width>
      <height>41</height>
     </rect>
@@ -526,8 +526,8 @@
   <widget class="QPushButton" name="btn_cancel_pool">
    <property name="geometry">
     <rect>
-     <x>490</x>
-     <y>350</y>
+     <x>200</x>
+     <y>250</y>
      <width>111</width>
      <height>41</height>
     </rect>
