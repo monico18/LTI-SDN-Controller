@@ -6,8 +6,7 @@ def add_dhcp_server(username, password, host, dhcp_server_config):
     try:
         data = json.dumps(dhcp_server_config)
         response = requests.put(f"https://{host}/rest/ip/dhcp-server", auth=HTTPBasicAuth(username, password), data=data, verify=False)
-        print(response.json())
-        return response.json()
+        return response
 
     except Exception as e:
         print("Failed to add DHCP server:", str(e))
@@ -15,8 +14,7 @@ def add_dhcp_server(username, password, host, dhcp_server_config):
 def delete_dhcp_server(username, password, host, dhcp_server_id):
     try:
         url = f"http://{host}/rest/ip/dhcp-server/{dhcp_server_id}"
-        response = requests.delete(url, auth=HTTPBasicAuth(username, password), data={'.id': dhcp_server_id}, verify=False)
-        return response.json()
+        requests.delete(url, auth=HTTPBasicAuth(username, password), data={'.id': dhcp_server_id}, verify=False)
 
     except Exception as e:
         print("Failed to delete DHCP server:", str(e))

@@ -22,6 +22,7 @@ import wireguard_queries
 import sys
 import json
 import atexit
+import re
 import warnings
 import requests
 import urllib3
@@ -39,7 +40,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.nodes = nodes
 
         # Selected
-        self.selected_node = []
+        self.selected_node = None
         self.selected_dhcp = None
         self.selected_bridge = None
         self.selected_wireless = None
@@ -469,7 +470,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.radio_disable_vpn.setChecked(True)
         self.btn_edit_vpn_server.clicked.connect(self.edit_vpn)
 
-
     def refresh_table(self):
         try:
             self.routerTable.setRowCount(0)
@@ -895,6 +895,14 @@ class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
         else:
             self.radio_disable.setChecked(True)
 
+    def is_valid_ip_address(self,ip_address):
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+
+        if re.match(ip_pattern, ip_address):
+            return True
+        else:
+            return False
+    
     def save_configuration(self):
         ip = self.line_ip.text()
         interface = self.interfaces.currentText()
@@ -904,6 +912,14 @@ class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
         else:
             disabled = "false"
         
+        if not self.is_valid_ip_address(ip):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx/xx")
+            msg_box.exec_()
+            return
+
         params = {
             "address" : ip,
             "interface" : interface,
@@ -939,6 +955,14 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
         else:
             self.radio_disable.setChecked(True) 
 
+    def is_valid_ip_address(self,ip_address):
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+
+        if re.match(ip_pattern, ip_address):
+            return True
+        else:
+            return False
+        
     def save_configuration(self):
         name = self.line_name.text()
         add = self.line_address.text()
@@ -948,6 +972,14 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
         else:
             disabled = "false"
 
+        if not self.is_valid_ip_address(add):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx")
+            msg_box.exec_()
+            return
+            
         params = {
             "name": name,
             "address": add,
@@ -1030,7 +1062,6 @@ class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
             msg_box.setIcon(QtWidgets.QMessageBox.Critical)
             msg_box.setWindowTitle("Error")
             msg_box.setText("Password must be 8 characters or more")
-            msg_box.setStyleSheet("QLabel{ text: white; }")  # Set text color to white
             msg_box.exec_()
             return
         
@@ -1106,6 +1137,14 @@ class WirelessPage(QtWidgets.QMainWindow, Ui_WirelessConfig):
         else:
             disabled = "false"
 
+        if len(ssid) > 32 :
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("SSID cannot be more than 32 Characters")
+            msg_box.exec_()
+            return
+        
         params = {
             'name': name,
             'ssid': ssid,
@@ -1308,7 +1347,11 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         address_pool = self.address_pool.currentText()
 
         if time == "00:00:00":
-            QtWidgets.QMessageBox.critical(self, "Error", "Invalid time: Lease time cannot be zero.")
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Invalid time: Lease time cannot be zero.")
+            msg_box.exec_()
             return
 
 
@@ -1321,9 +1364,21 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         }
 
         if self.id != None:
-            dhcp_queries.edit_dhcp_server(self.username,self.password,self.ip_address,self.id,params)
+            response = dhcp_queries.edit_dhcp_server(self.username,self.password,self.ip_address,self.id,params)
+            if response.status_code != 201:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(response.json())
+                msg_box.exec_()
         else :
-            dhcp_queries.add_dhcp_server(self.username,self.password,self.ip_address,params)
+            response = dhcp_queries.add_dhcp_server(self.username,self.password,self.ip_address,params)
+            if response != 201:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
 
         self.configSaved.emit()
 
