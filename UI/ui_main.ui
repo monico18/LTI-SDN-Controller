@@ -5087,7 +5087,7 @@
                   <string>Disable</string>
                  </property>
                 </widget>
-                <widget class="QPushButton" name="btn_edit_name">
+                <widget class="QPushButton" name="btn_edit_vpn_server">
                  <property name="geometry">
                   <rect>
                    <x>70</x>

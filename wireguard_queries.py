@@ -13,7 +13,12 @@ def get_wireguard_profiles(username, password, host):
 
 def edit_wireguard_profile(username, password, host, wireguard_profile_id, wireguard_profile_config):
     try:
-        response = requests.patch(f"https://{host}/rest/interface/wireguard/{wireguard_profile_id}", auth=HTTPBasicAuth(username, password), data={'.id': wireguard_profile_id, **wireguard_profile_config}, verify=False)
+        data = {
+            '.id': wireguard_profile_id, **wireguard_profile_config
+        }
+        json_data = json.dumps(data)
+        response = requests.patch(f"https://{host}/rest/interface/wireguard/{wireguard_profile_id}", auth=HTTPBasicAuth(username, password), 
+                                  data=json_data, headers={'Content-Type': 'application/json'}, verify=False)
         return response.json()
 
     except Exception as e:

@@ -281,7 +281,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if sender == self.btn_update_peer:
             self.vpn_peers_page = VpnPeersPage(self.ip_address,self.username,self.password)
             self.vpn_peers_page.configSaved.connect(self.handleConfigSaved)
-
+            self.vpn_peers_page.fill_vpn_peer_info(self.selected_vpn_peer)
             self.vpn_peers_page.show()
         if sender == self.btn_add_peer:
             self.vpn_peers_page = VpnPeersPage(self.ip_address,self.username,self.password)
@@ -445,6 +445,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.selected_nodes_text.setText(f"{current_text}\n {index.data()}")
             self.stackedWidget.setCurrentWidget(self.page_2)
             self.update_button_status()
+        #DNS Server
         self.servers = dns_queries.get_dns(self.username,self.password,self.ip_address)
         self.line_servers.setText(self.servers['servers'])
         if self.servers['allow-remote-requests'] == 'true' :
@@ -452,6 +453,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             self.radio_disable.setChecked(True)
         self.btn_edit_servers.clicked.connect(self.edit_servers)
+
+        #VPN Server
+        self.vpn_server = wireguard_queries.get_wireguard_profiles(self.username,self.password,self.ip_address)
+        if self.vpn_server:
+            self.first_server = self.vpn_server[0]
+
+            # Set the name in line_name_vpn from the first server
+            self.line_name_vpn.setText(self.first_server['name'])
+
+            # Check the status based on the 'disabled' value of the first server
+            if self.first_server['disabled'] == 'false':
+                self.radio_enable_vpn.setChecked(True)
+            else:
+                self.radio_disable_vpn.setChecked(True)
+        self.btn_edit_vpn_server.clicked.connect(self.edit_vpn)
+
 
     def refresh_table(self):
         try:
@@ -706,12 +723,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             disabled = "true"
         else:
             disabled = "false"
+
         params = {
             'servers': new_server,
             'allow-remote-requests': disabled 
         }
 
         dns_queries.update_dns(self.username,self.password,self.ip_address,params)
+
+    def edit_vpn(self):
+        new_name = self.line_name_vpn.text()
+        if self.radio_enable_vpn.isChecked():
+            disabled = "false"
+        else:
+            disabled = "true"
+
+        params = {
+            'name': new_name,
+            'disabled': disabled
+        }
+
+        wireguard_queries.edit_wireguard_profile(self.username,self.password,self.ip_address,self.first_server['.id'], params)
 
     def update_button_status(self):
         page_buttons = [self.btn_page_2, self.btn_page_3, self.btn_page_4,
@@ -732,6 +764,18 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
 
         self.btn_apply_peer.clicked.connect(self.save_configuration)
         self.populate_interfaces()
+
+    def fill_vpn_peer_info(self,selected_vpn_peer):
+        self.selected_vpn_peer = selected_vpn_peer
+        self.line_dst_add.setText(selected_vpn_peer['allowed-address'])
+        self.line_pub_key.setText(selected_vpn_peer['public-key'])
+        mode_index = self.interfaces.findText(selected_vpn_peer['interface'])
+        if mode_index != -1:
+            self.interfaces.setCurrentIndex(mode_index)
+        if self.selected_vpn_peer['disabled'] == 'false' :
+            self.radio_enable.setChecked(True) 
+        else:
+            self.radio_disable.setChecked(True)
 
     def populate_interfaces(self):
         try:
