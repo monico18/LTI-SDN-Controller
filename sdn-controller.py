@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QUrl, QUrlQuery
+from PyQt5.QtGui import QDesktopServices
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
 from dhcp_config import Ui_DhcpConfig
@@ -11,6 +12,7 @@ from dns_config import Ui_DnsConfig
 from ip_address_config import Ui_IpAddConfig
 from static_routes_config import Ui_StaticRoutesConfig
 from vpn_peers_config import Ui_VPNPeersConfig
+from terminal_page import Ui_Terminal
 import dhcp_queries
 import bridge_queries
 import wireless_queries
@@ -23,9 +25,11 @@ import pool_queries
 import sys
 import json
 import atexit
+import paramiko
 import re
 import warnings
 import requests
+import webbrowser
 import urllib3
 from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
@@ -65,6 +69,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ip_address_page = None
         self.static_route_page = None
         self.vpn_peers_page = None
+        self.terminal_page = None
 
 
         self.btn_page_1.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_1))
@@ -150,7 +155,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_update_routes.clicked.connect(self.open_static_route_config_page)
         self.btn_delete_routes.clicked.connect(self.open_static_route_config_page)
 
-        #VPN
+        # VPN
         self.btn_update_peer.setEnabled(False)
         self.btn_delete_peer.setEnabled(False)
 
@@ -158,6 +163,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_add_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_update_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_delete_peer.clicked.connect(self.open_vpn_peer_config_page)
+
+        # Terminal 
+        self.btn_Terminal.clicked.connect(self.open_terminal_page)
+
+        # WEB
+        self.btn_WEB.clicked.connect(self.open_webpage)
 
         # Default
         self.update_button_status()
@@ -168,8 +179,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_6.setEnabled(False)
         self.btn_page_7.setEnabled(False)
         self.btn_page_8.setEnabled(False)
+        self.btn_Terminal.setEnabled(False)
+        self.btn_WEB.setEnabled(False)
 
         self.refresh_table()
+
+    def open_webpage(self):
+        url = f"http://{self.ip_address}"
+        webbrowser.open(url)
 
     def open_dhcp_config_page(self):
         sender = self.sender()  
@@ -290,6 +307,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.vpn_peers_page.configSaved.connect(self.handleConfigSaved)
             self.vpn_peers_page.show()
 
+    def open_terminal_page(self):
+        self.terminal_page = TerminalPage(self.ip_address,self.username,self.password)
+        self.terminal_page.handle_ssh_connect()
+        self.terminal_page.show()
+
     def handleConfigSaved(self):
         if self.dhcp_config_page:
             self.dhcp_config_page.hide()
@@ -322,11 +344,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         self.selected_node = self.get_nodes()[row]
 
-        ip_address = self.routerTable.item(row, 1).text()
+        name = self.routerTable.item(row, 0).text()
         Session = sessionmaker(bind=engine)
         session = Session()
 
-        s = self.nodes.select().where(self.nodes.c.ip_address == ip_address)
+        s = self.nodes.select().where(self.nodes.c.name == name)
 
         data = session.execute(s)
         node = data.fetchone()
@@ -461,10 +483,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.vpn_server:
             self.first_server = self.vpn_server[0]
 
-            # Set the name in line_name_vpn from the first server
             self.line_name_vpn.setText(self.first_server['name'])
 
-            # Check the status based on the 'disabled' value of the first server
             if self.first_server['disabled'] == 'false':
                 self.radio_enable_vpn.setChecked(True)
             else:
@@ -789,11 +809,70 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def update_button_status(self):
         page_buttons = [self.btn_page_2, self.btn_page_3, self.btn_page_4,
-                        self.btn_page_5, self.btn_page_6, self.btn_page_7, self.btn_page_8]
+                        self.btn_page_5, self.btn_page_6, self.btn_page_7, self.btn_page_8, self.btn_Terminal, self.btn_WEB]
         enable_buttons = self.selected_node is not None
         for button in page_buttons:
             button.setEnabled(enable_buttons)
 
+class TerminalPage(QtWidgets.QMainWindow, Ui_Terminal):
+    def __init__(self,ip_address,username,password):
+        super(TerminalPage,self).__init__()
+        self.setupUi(self)
+        self.ip_address = ip_address
+        self.username = username
+        self.password = password
+
+        self.btn_command.clicked.connect(self.send_command)
+        
+
+    def handle_ssh_connect(self):
+        self.text_output.clear()
+
+        try:
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_client.connect(self.ip_address, username=self.username, password=self.password)
+
+            commands = self.line_commands
+            stdin, stdout, stderr = ssh_client.exec_command(commands)
+            
+            output = stdout.read().decode('utf-8')
+            self.text_output.setPlainText(output)
+
+            ssh_client.close()
+
+        except paramiko.AuthenticationException:
+            self.text_output.setPlainText("Authentication failed. Please check your credentials.")
+        except paramiko.SSHException as e:
+            self.text_output.setPlainText(f"SSH connection error: {str(e)}")
+        except Exception as e:
+            self.text_output.setPlainText(f"An error occurred: {str(e)}")
+
+    def send_command(self):
+        command = self.line_commands.text().strip()
+
+        if command.lower() == "clear":
+            self.text_output.clear()  # Clear text_output widget
+            return
+        
+        try:
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_client.connect(self.ip_address, username=self.username, password=self.password)
+
+            stdin, stdout, stderr = ssh_client.exec_command(command)
+            output = stdout.read().decode('utf-8')
+            self.text_output.append(f"> {command}\n{output}")
+
+            ssh_client.close()
+
+        except paramiko.AuthenticationException:
+            self.text_output.setPlainText("Authentication failed. Please check your credentials.")
+        except paramiko.SSHException as e:
+            self.text_output.setPlainText(f"SSH error: {str(e)}")
+        except Exception as e:
+            self.text_output.setPlainText(f"An error occurred: {str(e)}")
+            
 class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
     configSaved = pyqtSignal()
     def __init__(self,ip_address,username,password):
@@ -1340,7 +1419,7 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
             else:
                 address_pool_string_part = ""
             pool_queries.delete_pool(self.username,self.password,self.ip_address,address_pool_string_part)
-            self.populate_address_pool( )
+            self.populate_address_pool()
         if sender == self.btn_add_pool:
             self.pool_config_page = PoolPage(self.ip_address, self.username, self.password)
             self.pool_config_page.configSaved.connect(self.handleConfigSaved)
@@ -1505,7 +1584,6 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
         self.username.setFocus()
         self.pushButton.clicked.connect(self.login)
 
-        # Access stacked widget from the MainWindow instance
         self.stacked_widget = None
 
     def set_stacked_widget(self, stacked_widget):
