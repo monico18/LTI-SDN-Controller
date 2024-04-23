@@ -212,8 +212,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def open_bridge_config_page(self):
         sender = self.sender()
         if sender == self.btn_delete_bridge:
+            response_ports = bridge_queries.get_bridge_ports(self.username,self.password,self.ip_address)
+            data_ports = response_ports
+            for port in data_ports:
+                if port['bridge'] == self.selected_bridge['name']:
+                    bridge_queries.delete_bridge_port(self.username, self.password, self.ip_address, port['.id'])
             bridge_queries.delete_bridge(self.username,self.password,self.ip_address,self.selected_bridge['.id'])
-            self.btn_bridge.click()
             self.refresh_table_interfaces()
         if sender == self.btn_update_bridge:
             self.bridge_config_page = BridgePage(self.ip_address,self.username,self.password)
@@ -223,6 +227,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if sender == self.btn_add_bridge:
             self.bridge_config_page = BridgePage(self.ip_address,self.username,self.password)
             self.bridge_config_page.configSaved.connect(self.handleConfigSaved)
+            self.bridge_config_page.create_interface_checkboxes()
             self.bridge_config_page.show()
 
     def open_wireless_config_page(self):
@@ -822,8 +827,7 @@ class TerminalPage(QtWidgets.QMainWindow, Ui_Terminal):
         self.username = username
         self.password = password
 
-        self.btn_command.clicked.connect(self.send_command)
-        
+        self.btn_command.clicked.connect(self.send_command)        
 
     def handle_ssh_connect(self):
         self.text_output.clear()
@@ -852,7 +856,8 @@ class TerminalPage(QtWidgets.QMainWindow, Ui_Terminal):
         command = self.line_commands.text().strip()
 
         if command.lower() == "clear":
-            self.text_output.clear()  # Clear text_output widget
+            self.text_output.clear() 
+            self.line_commands.clear()
             return
         
         try:
@@ -863,6 +868,8 @@ class TerminalPage(QtWidgets.QMainWindow, Ui_Terminal):
             stdin, stdout, stderr = ssh_client.exec_command(command)
             output = stdout.read().decode('utf-8')
             self.text_output.append(f"> {command}\n{output}")
+
+            self.line_commands.clear()
 
             ssh_client.close()
 
@@ -917,8 +924,15 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
 
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
 
         params = {
             "interface" : interface,
@@ -963,8 +977,15 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
 
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
 
         params = {
             "dst-address" : address,
@@ -1030,8 +1051,15 @@ class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
 
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
         
         if not self.is_valid_ip_address(ip):
             msg_box = QtWidgets.QMessageBox()
@@ -1177,22 +1205,25 @@ class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
         selected_mode = self.combo_mode.currentText()
         if self.auth_types is not None:
             wpa2_pass = self.line_preShared_key.text()
-        
-        if len(wpa2_pass) < 8 :
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
-            msg_box.setWindowTitle("Error")
-            msg_box.setText("Password must be 8 characters or more")
-            msg_box.exec_()
-            return
-        
-        
-        params = {
-            'name' : name,
-            'mode' : selected_mode,
-            'authentication-types' : self.auth_types,
-            'wpa2-pre-shared-key' : wpa2_pass
-        }
+            if len(wpa2_pass) < 8 :
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Password must be 8 characters or more")
+                msg_box.exec_()
+                return
+            
+            params = {
+                'name' : name,
+                'mode' : selected_mode,
+                'authentication-types' : self.auth_types,
+                'wpa2-pre-shared-key' : wpa2_pass
+            }
+        else :
+            params = {
+                'name' : name,
+                'mode' : selected_mode,
+            }
 
         if self.selected_sec_profile is None:
             security_profile_queries.add_security_profile(self.username,self.password,self.ip_address,params)
@@ -1256,8 +1287,15 @@ class WirelessPage(QtWidgets.QMainWindow, Ui_WirelessConfig):
 
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
 
         if len(ssid) > 32 :
             msg_box = QtWidgets.QMessageBox()
@@ -1293,7 +1331,6 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
 
         self.btn_apply_bridge.clicked.connect(self.save_configuration)
         self.interfaceBox = self.findChild(QtWidgets.QGroupBox, "interfaceBox")
-        
     
     def create_interface_checkboxes(self):
         try:
@@ -1302,15 +1339,22 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
             self.selected_interfaces = []
 
             checkbox_layout = QtWidgets.QVBoxLayout(self.interfaceBox)
+            used_interfaces = set()
 
+            response_ports = bridge_queries.get_bridge_ports(self.username, self.password, self.ip_address)
+            data_ports = response_ports
+            for port in data_ports:
+                used_interfaces.add(port['interface'])
+            
             for interface in interface_data:
                 interface_name = interface.get('name', '')
                 if interface.get('type', '') != "bridge":
-                    checkbox = QtWidgets.QCheckBox(interface_name)
-                    checkbox.setChecked(False)  
-                    checkbox.setStyleSheet("QCheckBox { color: white; }")
-                    checkbox_layout.addWidget(checkbox)
-                    checkbox.stateChanged.connect(lambda state, name=interface_name: self.handle_checkbox_state_change(state, name))
+                    if interface_name not in used_interfaces:
+                        checkbox = QtWidgets.QCheckBox(interface_name)
+                        checkbox.setChecked(False)
+                        checkbox.setStyleSheet("QCheckBox { color: white; }")
+                        checkbox_layout.addWidget(checkbox)
+                        checkbox.stateChanged.connect(lambda state, name=interface_name: self.handle_checkbox_state_change(state, name))
 
             if self.selected_bridge is not None:
                 response_ports = bridge_queries.get_bridge_ports(self.username, self.password, self.ip_address)
@@ -1321,6 +1365,15 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
                     for intf in data_ports:
                         if intf['bridge'] == self.selected_bridge['name'] and intf['interface'] == interface_name:
                             checkbox.setChecked(True)
+
+            if self.selected_bridge is not None:
+                for intf in data_ports:
+                    if intf['bridge'] == self.selected_bridge['name']:
+                        checkbox = QtWidgets.QCheckBox(intf['interface'])
+                        checkbox.setChecked(True)
+                        checkbox.setStyleSheet("QCheckBox { color: white; }")
+                        checkbox_layout.addWidget(checkbox)
+                        checkbox.stateChanged.connect(lambda state, name=intf['interface']: self.handle_checkbox_state_change(state, name))
 
         except Exception as e:
             print(f"Error creating interface checkboxes: {e}")
@@ -1342,14 +1395,21 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
             self.radio_disable.setChecked(True)
 
         self.create_interface_checkboxes()
-
+    
     def save_configuration(self):
         name = self.line_name.text()
         
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
 
         params = {
             'name': name,
@@ -1486,8 +1546,15 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         time = self.lease_time.time().toString("hh:mm:ss")
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
 
         address_pool_text = self.address_pool.currentText()
 

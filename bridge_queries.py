@@ -70,8 +70,7 @@ def edit_bridge(username, password, host, bridge_id, bridge_config):
 
 def delete_bridge(username, password, host, bridge_id):
     try:
-        response = requests.delete(f"https://{host}/rest/interface/bridge/{bridge_id}", auth=HTTPBasicAuth(username, password), verify=False)
-        return response.json()
+        requests.delete(f"https://{host}/rest/interface/bridge/{bridge_id}", auth=HTTPBasicAuth(username, password), verify=False)
 
     except Exception as e:
         print("Failed to delete bridge:", str(e))
