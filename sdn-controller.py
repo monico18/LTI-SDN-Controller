@@ -827,7 +827,8 @@ class TerminalPage(QtWidgets.QMainWindow, Ui_Terminal):
         self.username = username
         self.password = password
 
-        self.btn_command.clicked.connect(self.send_command)        
+        self.btn_command.clicked.connect(self.send_command)  
+        self.btn_cancel.clicked.connect(self.close)      
 
     def handle_ssh_connect(self):
         self.text_output.clear()
@@ -892,6 +893,7 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
 
         self.btn_apply_peer.clicked.connect(self.save_configuration)
         self.populate_interfaces()
+        self.btn_cancel_peer.clicked.connect(self.close)
 
     def fill_vpn_peer_info(self,selected_vpn_peer):
         self.selected_vpn_peer = selected_vpn_peer
@@ -960,6 +962,7 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
         self.selected_static_route = None
 
         self.btn_apply_route.clicked.connect(self.save_configuration)
+        self.btn_cancel_route.clicked.connect(self.close)
 
     def fill_static_route_info(self,selected_static_route):
         self.line_dst_add.setText(selected_static_route['dst-address'])
@@ -1012,6 +1015,7 @@ class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
         self.selected_ip_address = None
 
         self.btn_apply_IPAdd.clicked.connect(self.save_configuration)
+        self.btn_cancel_IPAdd.clicked.connect(self.close)
         self.populate_interfaces()
     
     def populate_interfaces(self):
@@ -1094,6 +1098,7 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
         self.selected_dns_static = None
 
         self.btn_add_dns.clicked.connect(self.save_configuration)
+        self.btn_cancel_dns.clicked.connect(self.close)
 
     def fill_dns_info(self,selected_dns_static):
         self.line_name.setText(selected_dns_static['name'])
@@ -1161,6 +1166,7 @@ class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
         self.checkbox_wpa.stateChanged.connect(self.toggle_visibility)
 
         self.btn_apply_policy.clicked.connect(self.save_configuration)
+        self.btn_cancel_policy.clicked.connect(self.close)
 
     def fill_with_security_profile(self,selected_sec_profile):
         self.line_name.setText(selected_sec_profile['name'])
@@ -1243,6 +1249,7 @@ class WirelessPage(QtWidgets.QMainWindow, Ui_WirelessConfig):
         self.password=password
 
         self.btn_apply_wireless.clicked.connect(self.save_configuration)
+        self.btn_cancel_wireless.clicked.connect(self.close)
     
     def fill_wireless_info(self, selected_wireless):
         self.line_name.setText(selected_wireless['name'])
@@ -1328,9 +1335,9 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
         self.selected_bridge = None
         self.ports_to_delete = []
 
-
         self.btn_apply_bridge.clicked.connect(self.save_configuration)
         self.interfaceBox = self.findChild(QtWidgets.QGroupBox, "interfaceBox")
+        self.btn_cancel_bridge.clicked.connect(self.close)
     
     def create_interface_checkboxes(self):
         try:
@@ -1468,6 +1475,7 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         self.btn_remove_pool.clicked.connect(self.open_pool_config_page)
         self.populate_interfaces()
         self.populate_address_pool()
+        self.btn_cancel_dhcp.clicked.connect(self.close)
 
      def open_pool_config_page(self):
         sender = self.sender()
@@ -1614,6 +1622,7 @@ class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
         self.password=password
 
         self.btn_apply_pool.clicked.connect(self.save_configuration)
+        self.btn_cancel_pool.clicked.connect(self.close)
 
     def is_valid_range(self,range):
         ip_cidr_pattern  = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
