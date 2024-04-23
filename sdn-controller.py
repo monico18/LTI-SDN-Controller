@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import pyqtSignal, Qt, QUrl, QUrlQuery
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QDesktopServices
 from ui_main import Ui_MainWindow
 from login import Ui_LoginPage
@@ -24,6 +24,9 @@ import wireguard_queries
 import pool_queries
 import sys
 import json
+import socket
+import struct
+import select
 import atexit
 import paramiko
 import re
@@ -32,7 +35,7 @@ import requests
 import webbrowser
 import urllib3
 from requests.auth import HTTPBasicAuth
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete
+from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, delete, exc
 from sqlalchemy.orm import sessionmaker
 
 
@@ -87,7 +90,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_config_selected_nodes.clicked.connect(self.configure_selected_nodes)
         self.routerTable.itemClicked.connect(self.handle_table_item_clicked)
         self.btn_update_node.clicked.connect(self.update_node)
-        #self.btn_delete_node.clicked.connect()
+        self.btn_save_node.clicked.connect(self.save_updated_node)
+        self.btn_cancel_node.clicked.connect(self.cancel_updated_node)
+        self.btn_delete_node.clicked.connect(self.delete_node)
 
         # DHCP
         if self.selected_dhcp is None:
@@ -463,6 +468,84 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.lineEdit_3.setText(ip_address)
         self.lineEdit_4.setText(name)
 
+    def delete_node(self):
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        s = self.nodes.delete().where(self.nodes.c.name == self.node_name)
+        data = session.execute(s)
+        session.commit()
+
+        self.refresh_table()
+
+        session.close()
+
+    def is_host_reachable(self,host, port=443, timeout=3):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+
+            sock.connect((host, port))
+
+            sock.close()
+            return True
+
+        except (socket.timeout, ConnectionRefusedError):
+            return False
+
+    def save_updated_node(self):
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        username = self.lineEdit.text()
+        password = self.lineEdit_2.text()
+        ip_address = self.lineEdit_3.text()
+        name = self.lineEdit_4.text()
+
+        if self.is_host_reachable(ip_address):
+            try:
+                ins = self.nodes.update().where(self.nodes.c.name == self.node_name).values(username=username, password=password, ip_address=ip_address, name=name)
+                session.execute(ins)
+
+                session.commit()
+
+                print("Node updated successfully!")
+
+                self.lineEdit.clear()
+                self.lineEdit_2.clear()
+                self.lineEdit_3.clear()
+                self.lineEdit_4.clear()
+                self.routerTable.verticalHeader().setVisible(False)
+                self.refresh_table()
+
+            except exc.IntegrityError as e:
+                session.rollback()  # Roll back the transaction to avoid leaving a partially inserted record
+                session.close()
+
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Failed to add node: Duplicate name found in the database.")
+                msg_box.exec_()
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Unable to establish connection to the Router")
+            msg_box.exec_()
+            return None
+    
+    def cancel_updated_node(self):
+        self.btn_save_node.hide()
+        self.btn_cancel_node.hide()
+        self.btn_add.show()
+
+        self.lineEdit.clear()
+        self.lineEdit_2.clear()
+        self.lineEdit_3.clear()
+        self.lineEdit_4.clear()
+        self.refresh_table()
+
     def add_node(self):
         Session = sessionmaker(bind=engine)
         session = Session()
@@ -472,72 +555,85 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         ip_address = self.lineEdit_3.text()
         name = self.lineEdit_4.text()
 
+        if self.is_host_reachable(ip_address):
+            try:
+                ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
+                session.execute(ins)
+                session.commit()
+                print("Node added successfully!")
 
+                self.lineEdit.clear()
+                self.lineEdit_2.clear()
+                self.lineEdit_3.clear()
+                self.lineEdit_4.clear()
+                self.routerTable.verticalHeader().setVisible(False)
+                self.refresh_table()
 
-        response = requests.get(f'https://{ip_address}/rest/ip/address', auth=HTTPBasicAuth(username,password), verify=False)
-        if response.status_code == 200:
-            # Insert the values into the nodes table
-            ins = self.nodes.insert().values(username=username, password=password, ip_address=ip_address, name=name)
-            session.execute(ins)
+            except exc.IntegrityError as e:
+                session.rollback()  
+                session.close()
 
-            # Commit the transaction
-            session.commit()
-
-            print("Node added successfully!")
-
-            self.lineEdit.clear()
-            self.lineEdit_2.clear()
-            self.lineEdit_3.clear()
-            self.lineEdit_4.clear()
-            self.routerTable.verticalHeader().setVisible(False)
-            self.refresh_table()
-            self.refresh_table_dhcp()
-
-            # Close the session
-            session.close()
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Failed to add node: Duplicate name found in the database.")
+                msg_box.exec_()
         else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Unable to establish connection to the Router")
+            msg_box.exec_()
             return None
         
     def configure_selected_nodes(self):
-        selected_nodes_table = self.routerTable.selectedIndexes()
-        if self.selected_node:
-            self.selected_nodes_text.setText("Selected Nodes:")
-            for index in selected_nodes_table:
-                current_text= self.selected_nodes_text.text()
-                self.selected_nodes_text.setText(f"{current_text}\n {index.data()}")
-            self.stackedWidget.setCurrentWidget(self.page_2)
-            self.update_button_status()
-        #DNS Server
-        self.servers = dns_queries.get_dns(self.username,self.password,self.ip_address)
-        self.line_servers.setText(self.servers['servers'])
-        if self.servers['allow-remote-requests'] == 'true' :
-            self.radio_enable.setChecked(True) 
-        else:
-            self.radio_disable.setChecked(True)
-        self.btn_edit_servers.clicked.connect(self.edit_servers)
-
-        #VPN Server
-        self.vpn_server = wireguard_queries.get_wireguard_profiles(self.username,self.password,self.ip_address)
-        if self.vpn_server:
-            self.first_server = self.vpn_server[0]
-
-            self.line_name_vpn.setText(self.first_server['name'])
-            self.line_port_vpn.setText(self.first_server['listen-port'])
-
-            if self.first_server['disabled'] == 'false':
-                self.radio_enable_vpn.setChecked(True)
+        if self.is_host_reachable(self.ip_address):
+            selected_nodes_table = self.routerTable.selectedIndexes()
+            if self.selected_node:
+                self.selected_nodes_text.setText("Selected Nodes:")
+                for index in selected_nodes_table:
+                    current_text= self.selected_nodes_text.text()
+                    self.selected_nodes_text.setText(f"{current_text}\n {index.data()}")
+                self.stackedWidget.setCurrentWidget(self.page_2)
+                self.update_button_status()
+            #DNS Server
+            self.servers = dns_queries.get_dns(self.username,self.password,self.ip_address)
+            self.line_servers.setText(self.servers['servers'])
+            if self.servers['allow-remote-requests'] == 'true' :
+                self.radio_enable.setChecked(True) 
             else:
-                self.radio_disable_vpn.setChecked(True)
-        self.btn_edit_vpn_server.clicked.connect(self.edit_vpn)
+                self.radio_disable.setChecked(True)
+            self.btn_edit_servers.clicked.connect(self.edit_servers)
 
-        self.refresh_table_dhcp()
-        self.refresh_table_interfaces()
-        self.refresh_table_wireless()
-        self.refresh_table_dns_static()
-        self.refresh_table_ip_address()
-        self.refresh_table_static_routes()
-        self.refresh_table_vpn_peers()
+            #VPN Server
+            self.vpn_server = wireguard_queries.get_wireguard_profiles(self.username,self.password,self.ip_address)
+            if self.vpn_server:
+                self.first_server = self.vpn_server[0]
 
+                self.line_name_vpn.setText(self.first_server['name'])
+                self.line_port_vpn.setText(self.first_server['listen-port'])
+
+                if self.first_server['disabled'] == 'false':
+                    self.radio_enable_vpn.setChecked(True)
+                else:
+                    self.radio_disable_vpn.setChecked(True)
+            self.btn_edit_vpn_server.clicked.connect(self.edit_vpn)
+
+            self.refresh_table_dhcp()
+            self.refresh_table_interfaces()
+            self.refresh_table_wireless()
+            self.refresh_table_dns_static()
+            self.refresh_table_ip_address()
+            self.refresh_table_static_routes()
+            self.refresh_table_vpn_peers()
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Unable to establish connection to the Router")
+            msg_box.exec_()
+            return
+   
     def refresh_table(self):
         try:
             self.routerTable.setRowCount(0)
@@ -1773,17 +1869,13 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
             print("Invalid username or password.")
 
 def clear_db(engine, nodes):
-    # Create a session
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Create a delete statement that deletes all rows from the nodes table
     del_stmt = delete(nodes)
 
-    # Execute the delete statement
     session.execute(del_stmt)
 
-    # Commit the transaction
     session.commit()
     session.close()
 
@@ -1797,9 +1889,9 @@ if __name__ == "__main__":
                   Column('username', String),
                   Column('password', String),
                   Column('ip_address', String),
-                  Column('name', String)
+                  Column('name', String, unique=True)
                   )
-
+    
     metadata.create_all(engine)
 
     app = QtWidgets.QApplication(sys.argv)
