@@ -1488,6 +1488,7 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         self.setupUi(self)
 
         self.pool_config_page = None
+        self.selected_pool= None
         self.ip_address= ip_address
         self.username=username
         self.password=password
@@ -1496,6 +1497,7 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         self.btn_update_dhcp.clicked.connect(self.saveConfig)
         self.btn_add_pool.clicked.connect(self.open_pool_config_page)
         self.btn_remove_pool.clicked.connect(self.open_pool_config_page)
+        self.btn_update_pool.clicked.connect(self.open_pool_config_page)
         self.populate_interfaces()
         self.populate_address_pool()
         self.btn_cancel_dhcp.clicked.connect(self.close)
@@ -1511,6 +1513,19 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
                 address_pool_string_part = ""
             pool_queries.delete_pool(self.username,self.password,self.ip_address,address_pool_string_part)
             self.populate_address_pool()
+        if sender == self.btn_update_pool:
+            address_pool_text = self.address_pool.currentText()
+            address_pool_parts = address_pool_text.split(" - ")
+            if len(address_pool_parts) > 1:
+                address_pool_string_part = address_pool_parts[0]
+            else:
+                address_pool_string_part = ""
+            response = pool_queries.get_pool(self.username,self.password,self.ip_address,address_pool_string_part)
+            self.selected_pool = response
+            self.pool_config_page = PoolPage(self.ip_address, self.username, self.password)
+            self.pool_config_page.configSaved.connect(self.handleConfigSaved)
+            self.pool_config_page.fill_pool(self.selected_pool)
+            self.pool_config_page.show()
         if sender == self.btn_add_pool:
             self.pool_config_page = PoolPage(self.ip_address, self.username, self.password)
             self.pool_config_page.configSaved.connect(self.handleConfigSaved)
@@ -1643,9 +1658,15 @@ class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
         self.ip_address= ip_address
         self.username=username
         self.password=password
+        self.selected_pool = None
 
         self.btn_apply_pool.clicked.connect(self.save_configuration)
         self.btn_cancel_pool.clicked.connect(self.close)
+
+    def fill_pool(self,selected_pool):
+        self.line_name.setText(selected_pool['name'])
+        self.line_addresses.setText(selected_pool['ranges'])
+        self.selected_pool = selected_pool
 
     def is_valid_range(self,range):
         ip_cidr_pattern  = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
@@ -1672,7 +1693,10 @@ class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
             'name' : name,
             'ranges' : ranges
         }
-        pool_queries.add_pool(self.username,self.password,self.ip_address,params)
+        if self.selected_pool is not None:
+            pool_queries.edit_pool(self.username,self.password,self.ip_address,self.selected_pool['.id'],params)
+        else:
+            pool_queries.add_pool(self.username,self.password,self.ip_address,params)
         self.configSaved.emit()
         self.close() 
 
