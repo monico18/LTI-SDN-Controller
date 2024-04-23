@@ -82,10 +82,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_8.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_8))
 
 
-        # Add Nodes
+        # Nodes
         self.btn_add.clicked.connect(self.add_node)
         self.btn_config_selected_nodes.clicked.connect(self.configure_selected_nodes)
         self.routerTable.itemClicked.connect(self.handle_table_item_clicked)
+        self.btn_update_node.clicked.connect(self.update_node)
+        #self.btn_delete_node.clicked.connect()
 
         # DHCP
         if self.selected_dhcp is None:
@@ -181,8 +183,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_page_8.setEnabled(False)
         self.btn_Terminal.setEnabled(False)
         self.btn_WEB.setEnabled(False)
-
         self.btn_config_selected_nodes.setEnabled(False)
+        self.btn_update_node.setEnabled(False)
+        self.btn_delete_node.setEnabled(False)
+
+        self.btn_save_node.hide()
+        self.btn_cancel_node.hide()
 
         self.refresh_table()
 
@@ -359,14 +365,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def handle_table_item_clicked(self, item):
         
         self.btn_config_selected_nodes.setEnabled(True)
+        self.btn_update_node.setEnabled(True)
+        self.btn_delete_node.setEnabled(True)
         row = item.row()
         self.selected_node = self.get_nodes()[row]
 
-        name = self.routerTable.item(row, 0).text()
+        self.node_name = self.routerTable.item(row, 0).text()
         Session = sessionmaker(bind=engine)
         session = Session()
 
-        s = self.nodes.select().where(self.nodes.c.name == name)
+        s = self.nodes.select().where(self.nodes.c.name == self.node_name)
 
         data = session.execute(s)
         node = data.fetchone()
@@ -376,14 +384,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ip_address = ip_address
         self.username = username
         self.password = password
-
-        self.refresh_table_dhcp()
-        self.refresh_table_interfaces()
-        self.refresh_table_wireless()
-        self.refresh_table_dns_static()
-        self.refresh_table_ip_address()
-        self.refresh_table_static_routes()
-        self.refresh_table_vpn_peers()
 
     def handle_dhcptable_item_clicked(self, item):
         self.btn_update_dhcp.setEnabled(True)
@@ -442,6 +442,26 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         row = item.row()
         vpn_id = self.vpnTable.item(row,0).text()
         self.selected_vpn_peer = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,vpn_id)
+
+    def update_node(self):
+
+        self.btn_save_node.show()
+        self.btn_cancel_node.show()
+        self.btn_add.hide()
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        s = self.nodes.select().where(self.nodes.c.name == self.node_name)
+
+        data = session.execute(s)
+        node = data.fetchone()
+        session.commit()
+        username, password, ip_address, name= node[1:5]
+
+        self.lineEdit.setText(username)
+        self.lineEdit_2.setText(password)
+        self.lineEdit_3.setText(ip_address)
+        self.lineEdit_4.setText(name)
 
     def add_node(self):
         Session = sessionmaker(bind=engine)
@@ -509,6 +529,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 self.radio_disable_vpn.setChecked(True)
         self.btn_edit_vpn_server.clicked.connect(self.edit_vpn)
+
+        self.refresh_table_dhcp()
+        self.refresh_table_interfaces()
+        self.refresh_table_wireless()
+        self.refresh_table_dns_static()
+        self.refresh_table_ip_address()
+        self.refresh_table_static_routes()
+        self.refresh_table_vpn_peers()
 
     def refresh_table(self):
         try:
@@ -990,6 +1018,14 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
         else:
             self.radio_disable.setChecked(True)
 
+    def is_valid_ip_address(self,ip_address):
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+
+        if re.match(ip_pattern, ip_address):
+            return True
+        else:
+            return False
+        
     def save_configuration(self):
         address = self.line_dst_add.text()
         gateway = self.line_gateway.text()
@@ -1003,6 +1039,14 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
             msg_box.setIcon(QtWidgets.QMessageBox.Critical)
             msg_box.setWindowTitle("Error")
             msg_box.setText("Please select whether its enabled or disabled.")
+            msg_box.exec_()
+            return
+        
+        if not self.is_valid_ip_address(address):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx/xx")
             msg_box.exec_()
             return
 
