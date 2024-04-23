@@ -182,6 +182,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_Terminal.setEnabled(False)
         self.btn_WEB.setEnabled(False)
 
+        self.btn_config_selected_nodes.setEnabled(False)
+
         self.refresh_table()
 
     def open_webpage(self):
@@ -239,8 +241,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def open_sec_profile_config_page(self):
         sender = self.sender()
         if sender == self.btn_delete_security_profiles:
-            security_profile_queries.delete_security_profile(self.username,self.password,self.ip_address,self.selected_sec_profile['.id'])
-            self.refresh_table_wireless()
+            response_wir = wireless_queries.get_wireless_profiles(self.username,self.password,self.ip_address)
+            wireless_security_profiles = {profile['security-profile'] for profile in response_wir}
+            if self.selected_sec_profile['name'] in wireless_security_profiles:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("You can't remove a profile that is being used")
+                msg_box.exec_()
+                return
+            else:
+                security_profile_queries.delete_security_profile(self.username,self.password,self.ip_address,self.selected_sec_profile['.id'])
+                self.refresh_table_wireless()
         if sender == self.btn_update_security_profiles:
             self.sec_profile_config_page = SecurityProfilesPage(self.ip_address,self.username,self.password)
             self.sec_profile_config_page.configSaved.connect(self.handleConfigSaved)
@@ -345,7 +357,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.refresh_table_vpn_peers()
 
     def handle_table_item_clicked(self, item):
-
+        
+        self.btn_config_selected_nodes.setEnabled(True)
         row = item.row()
         self.selected_node = self.get_nodes()[row]
 
@@ -489,6 +502,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.first_server = self.vpn_server[0]
 
             self.line_name_vpn.setText(self.first_server['name'])
+            self.line_port_vpn.setText(self.first_server['listen-port'])
 
             if self.first_server['disabled'] == 'false':
                 self.radio_enable_vpn.setChecked(True)
@@ -800,6 +814,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def edit_vpn(self):
         new_name = self.line_name_vpn.text()
+        new_port = self.line_port_vpn.text()
         if self.radio_enable_vpn.isChecked():
             disabled = "false"
         else:
@@ -807,6 +822,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         params = {
             'name': new_name,
+            "listen-port": new_port,
             'disabled': disabled
         }
 
@@ -1225,7 +1241,14 @@ class SecurityProfilesPage(QtWidgets.QMainWindow, Ui_SecurityProfilesConfig):
                 'authentication-types' : self.auth_types,
                 'wpa2-pre-shared-key' : wpa2_pass
             }
-        else :
+        elif selected_mode != "none":
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please select the WPA type")
+            msg_box.exec_()
+            return
+        else:
             params = {
                 'name' : name,
                 'mode' : selected_mode,
