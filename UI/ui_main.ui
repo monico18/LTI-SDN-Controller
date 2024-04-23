@@ -9798,6 +9798,16 @@
                   <string>Address</string>
                  </property>
                 </column>
+                <column>
+                 <property name="text">
+                  <string>CName</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>MX</string>
+                 </property>
+                </column>
                </widget>
               </item>
              </layout>

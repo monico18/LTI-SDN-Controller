@@ -23,7 +23,7 @@ def add_static_dns(username, password, host, dns_config):
     try:
         data = json.dumps(dns_config)
         response = requests.put(f"https://{host}/rest/ip/dns/static", auth=HTTPBasicAuth(username, password), data=data, verify=False)
-        return response.json()
+        return response
     except Exception as e:
         print("Failed to add static DNS:", str(e))
 
@@ -41,7 +41,7 @@ def update_static_dns(username, password, host, dns_id,dns_config):
         json_data = json.dumps(data)
         response = requests.patch(f"https://{host}/rest/ip/dns/static/{dns_id}", auth=HTTPBasicAuth(username, password), 
                                   data=json_data, headers={'Content-Type': 'application/json'}, verify=False)
-        return response.json()
+        return response
     except Exception as e:
         print("Failed to update static DNS:", str(e))
 

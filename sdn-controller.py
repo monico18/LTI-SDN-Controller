@@ -812,23 +812,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 int_id= dns_static.get('.id', '')           
                 name = dns_static.get('name', '')
                 ip_add = dns_static.get('address', '')
+                cname = dns_static.get('cname', '')
+                mx = dns_static.get('mx-exchange', '')
 
                 self.dnstable.insertRow(row)
                 self.dnstable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
                 self.dnstable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
                 self.dnstable.setItem(row, 2, QtWidgets.QTableWidgetItem(ip_add))
+                self.dnstable.setItem(row, 3, QtWidgets.QTableWidgetItem(cname))
+                self.dnstable.setItem(row, 4, QtWidgets.QTableWidgetItem(mx))
 
-                for col in range(3):
+
+                for col in range(5):
                     item = self.dnstable.item(row, col)
                     if item:
                         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
 
                 if dns_static.get('disabled','') == "true":
-                    for col in range(3):
+                    for col in range(5):
                         item = self.dnstable.item(row, col)
                         if item:
                             item.setBackground(QtGui.QColor("#b30b05"))
-                for col in range(3):
+                for col in range(5):
                     self.dnstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
     def refresh_table_ip_address(self):
@@ -1255,15 +1260,50 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
 
         self.btn_add_dns.clicked.connect(self.save_configuration)
         self.btn_cancel_dns.clicked.connect(self.close)
+        self.fill_dns_modes()
+        self.combo_mode.currentIndexChanged.connect(self.handle_mode_change)
 
     def fill_dns_info(self,selected_dns_static):
         self.line_name.setText(selected_dns_static['name'])
-        self.line_address.setText(selected_dns_static['address'])
+        
+        address_fields = ['address', 'cname', 'mx-exchange']
+        displayed_address = None
+
+        for field in address_fields:
+            if field in selected_dns_static and selected_dns_static[field]:
+                displayed_address = selected_dns_static[field]
+                break
+
+        if displayed_address:
+            self.line_address.setText(displayed_address)
+        else:
+            self.line_address.setText("")          
+
         self.selected_dns_static = selected_dns_static
         if self.selected_dns_static['disabled'] == 'false' :
             self.radio_enable.setChecked(True) 
         else:
             self.radio_disable.setChecked(True) 
+        mode_index = self.combo_mode.findText(selected_dns_static['type'])
+        if mode_index != -1:
+            self.combo_mode.setCurrentIndex(mode_index)
+
+    def fill_dns_modes(self):
+        dns_types = ["A","AAAA","CNAME","MX"]
+        self.combo_mode.addItems(dns_types)
+        self.handle_mode_change()
+
+    def handle_mode_change(self):
+        selected_item = self.combo_mode.currentText()
+
+        if selected_item == "A":
+            self.label_4.setText("IPv4 Address")
+        elif selected_item == "AAAA":
+            self.label_4.setText("IPv6 Address")
+        elif selected_item == "CNAME":
+            self.label_4.setText("Canonical Name")
+        elif selected_item == "MX":
+            self.label_4.setText("Mail Server Address")
 
     def is_valid_ip_address(self,ip_address):
         ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
@@ -1275,31 +1315,76 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
         
     def save_configuration(self):
         name = self.line_name.text()
-        add = self.line_address.text()
 
         if self.radio_disable.isChecked():
             disabled = "true"
-        else:
+        elif self.radio_enable.isChecked():
             disabled = "false"
-
-        if not self.is_valid_ip_address(add):
+        else:
             msg_box = QtWidgets.QMessageBox()
             msg_box.setIcon(QtWidgets.QMessageBox.Critical)
             msg_box.setWindowTitle("Error")
-            msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx")
+            msg_box.setText("Please select whether its enabled or disabled.")
             msg_box.exec_()
             return
+
+        selected_item = self.combo_mode.currentText()
+
+        if selected_item == "A":
+            add = self.line_address.text()
+
+            if not self.is_valid_ip_address(add):
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx")
+                msg_box.exec_()
+                return
             
-        params = {
-            "name": name,
-            "address": add,
-            "disabled": disabled
-        }
+            params = {
+                "name": name,
+                "address": add,
+                "disabled": disabled
+            }
+        elif selected_item == "AAAA":
+            add = self.line_address.text()
+
+            params = {
+                "name": name,
+                "address": add,
+                "disabled": disabled
+            }
+        elif selected_item == "CNAME":
+            add = self.line_address.text()
+            params = {
+                "name": name,
+                "cname": add,
+                "disabled": disabled
+            }
+        elif selected_item == "MX":
+            add = self.line_address.text()
+            params = {
+                "name": name,
+                "mx-exchange": add,
+                "disabled": disabled
+            }
 
         if self.selected_dns_static is not None :
-            dns_queries.update_static_dns(self.username,self.password,self.ip_address,self.selected_dns_static['.id'], params)
+            response = dns_queries.update_static_dns(self.username,self.password,self.ip_address,self.selected_dns_static['.id'], params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
         else:
-            dns_queries.add_static_dns(self.username,self.password,self.ip_address,params)
+            response = dns_queries.add_static_dns(self.username,self.password,self.ip_address,params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
         self.configSaved.emit()
         self.close()
         
