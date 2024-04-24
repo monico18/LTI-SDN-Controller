@@ -308,13 +308,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def open_static_route_config_page(self):
         sender = self.sender()
         if sender == self.btn_delete_routes:
-            static_routes_queries.delete_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'])
-            self.refresh_table_static_routes()
+            if self.selected_static_route['dynamic'] == "true":
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("You cannot delete a dynamically added static route")
+                msg_box.exec_()
+                return
+            else:
+                static_routes_queries.delete_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'])
+                self.refresh_table_static_routes()
         if sender == self.btn_update_routes:
-            self.static_route_page = StaticRoutePage(self.ip_address,self.username,self.password)
-            self.static_route_page.configSaved.connect(self.handleConfigSaved)
-            self.static_route_page.fill_static_route_info(self.selected_static_route)
-            self.static_route_page.show()
+            if self.selected_static_route['dynamic'] == "true":
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("You cannot update a dynamically added static route")
+                msg_box.exec_()
+                return
+            else:
+                self.static_route_page = StaticRoutePage(self.ip_address,self.username,self.password)
+                self.static_route_page.configSaved.connect(self.handleConfigSaved)
+                self.static_route_page.fill_static_route_info(self.selected_static_route)
+                self.static_route_page.show()
         if sender == self.btn_add_routes:
             self.static_route_page = StaticRoutePage(self.ip_address,self.username,self.password)
             self.static_route_page.configSaved.connect(self.handleConfigSaved)
@@ -714,7 +730,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif sender == self.btn_bridge:
             endpoint = "interface/bridge"
             self.btn_add_bridge.setEnabled(True)
-        
+        else :
+            self.btn_add_bridge.setEnabled(False)
+            self.btn_update_bridge.setEnabled(False)
+            self.btn_delete_bridge.setEnabled(False)
+
         try:   
             response = requests.get(f"https://{self.ip_address}/rest/{endpoint}", auth=HTTPBasicAuth(self.username, self.password), verify=False)
             interface_data = response.json()
@@ -1118,6 +1138,7 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
             self.radio_enable.setChecked(True)
         else:
             self.radio_disable.setChecked(True)
+       
 
     def is_valid_ip_address(self,ip_address):
         ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
@@ -1133,8 +1154,10 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
 
         if self.radio_disable.isChecked():
             disabled = "true"
+            actived = "false"
         elif self.radio_enable.isChecked():
             disabled = "false"
+            actived = "true"
         else:
             msg_box = QtWidgets.QMessageBox()
             msg_box.setIcon(QtWidgets.QMessageBox.Critical)
@@ -1150,17 +1173,30 @@ class StaticRoutePage(QtWidgets.QMainWindow, Ui_StaticRoutesConfig):
             msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx/xx")
             msg_box.exec_()
             return
-
         params = {
-            "dst-address" : address,
-            "gateway" : gateway,
-            "disabled" : disabled,
-        }
-
+                "dst-address" : address,
+                "gateway" : gateway,
+                "disabled" : disabled,
+            }
+        
         if self.selected_static_route is not None:
-            static_routes_queries.edit_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'], params)
+            response = static_routes_queries.edit_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'], params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Please insert a valid Address or Interface")
+                msg_box.exec_()
+                return
         else:
-            static_routes_queries.add_static_route(self.username,self.password,self.ip_address,params)
+            response = static_routes_queries.add_static_route(self.username,self.password,self.ip_address,params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Please insert a valid Address or Interface")
+                msg_box.exec_()
+                return
 
         self.configSaved.emit()
         self.close()
@@ -1265,7 +1301,7 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
 
     def fill_dns_info(self,selected_dns_static):
         self.line_name.setText(selected_dns_static['name'])
-        
+
         address_fields = ['address', 'cname', 'mx-exchange']
         displayed_address = None
 
