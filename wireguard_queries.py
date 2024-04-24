@@ -53,7 +53,12 @@ def add_wireguard_peer(username, password, host, wireguard_peer_config):
 
 def edit_wireguard_peer(username, password, host, wireguard_peer_id, wireguard_peer_config):
     try:
-        response = requests.patch(f"https://{host}/rest/interface/wireguard/peers/{wireguard_peer_id}", auth=HTTPBasicAuth(username, password), data={'.id': wireguard_peer_id, **wireguard_peer_config}, verify=False)
+        data = {
+            '.id': wireguard_peer_id, **wireguard_peer_config
+        }
+        json_data = json.dumps(data)
+        response = requests.patch(f"https://{host}/rest/interface/wireguard/peers/{wireguard_peer_id}", auth=HTTPBasicAuth(username, password), 
+                                  data=json_data, headers={'Content-Type': 'application/json'}, verify=False)
         return response.json()
 
     except Exception as e:

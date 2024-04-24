@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>642</width>
-    <height>666</height>
+    <height>581</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1482,7 +1482,7 @@
     <rect>
      <x>190</x>
      <y>230</y>
-     <width>121</width>
+     <width>131</width>
      <height>17</height>
     </rect>
    </property>
@@ -1659,7 +1659,7 @@
     </palette>
    </property>
    <property name="text">
-    <string>Ex : 192.168.0.0/24</string>
+    <string>Ex : xxx.xxx.xxx.xxx/32</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_5">

@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_VPNPeersConfig(object):
     def setupUi(self, VPNPeersConfig):
         VPNPeersConfig.setObjectName("VPNPeersConfig")
-        VPNPeersConfig.resize(642, 666)
+        VPNPeersConfig.resize(642, 581)
         VPNPeersConfig.setStyleSheet("background-color: rgb(45, 45, 45);")
         self.label = QtWidgets.QLabel(VPNPeersConfig)
         self.label.setGeometry(QtCore.QRect(30, 30, 71, 17))
@@ -482,7 +482,7 @@ class Ui_VPNPeersConfig(object):
         self.line_dst_add.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.line_dst_add.setObjectName("line_dst_add")
         self.label_4 = QtWidgets.QLabel(VPNPeersConfig)
-        self.label_4.setGeometry(QtCore.QRect(190, 230, 121, 17))
+        self.label_4.setGeometry(QtCore.QRect(190, 230, 131, 17))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -793,6 +793,6 @@ class Ui_VPNPeersConfig(object):
         self.radio_disable.setText(_translate("VPNPeersConfig", "Disable"))
         self.radio_enable.setText(_translate("VPNPeersConfig", "Enable"))
         self.label_3.setText(_translate("VPNPeersConfig", "Allowed Address"))
-        self.label_4.setText(_translate("VPNPeersConfig", "Ex : 192.168.0.0/24"))
+        self.label_4.setText(_translate("VPNPeersConfig", "Ex : xxx.xxx.xxx.xxx/32"))
         self.label_5.setText(_translate("VPNPeersConfig", "<html><head/><body><p>How to : Go to Wireguard,</p><p>add an empty tunnel,</p><p>enter given public and private</p></body></html>"))
         self.label_6.setText(_translate("VPNPeersConfig", "Pr Key"))

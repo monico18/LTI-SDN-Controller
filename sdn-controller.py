@@ -23,10 +23,12 @@ import static_routes_queries
 import wireguard_queries
 import pool_queries
 import sys
+import qrcode
+from qrcode.image.pure import PymagingImage 
 import json
 import socket
-import struct
-import select
+import os
+import tempfile
 import atexit
 import paramiko
 import re
@@ -166,12 +168,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_update_peer.setEnabled(False)
         self.btn_delete_peer.setEnabled(False)
         self.btn_conf_peer.setEnabled(False)
+        self.btn_qrcode_peer.setEnabled(False)
 
         self.vpnTable.clicked.connect(self.handler_vpnPeerTable_item_clicked)
         self.btn_add_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_update_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_delete_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_conf_peer.clicked.connect(self.download_vpn_config)
+        self.btn_qrcode_peer.clicked.connect(self.show_qr_code)
 
         # Terminal 
         self.btn_Terminal.clicked.connect(self.open_terminal_page)
@@ -199,6 +203,54 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.refresh_table()
 
+    def show_qr_code(self):
+        response = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,self.selected_vpn_peer['.id'])
+        peer_id = response['.id'].replace('*', '')          
+        allowed_ips = response['allowed-address']
+        public_key = response['public-key']
+        private_key = response['private-key']
+
+        config = f"""
+                [Interface]
+                PrivateKey = {private_key}
+                Address = {allowed_ips}
+
+
+                [Peer]
+                PublicKey = {public_key}
+                AllowedIPs = {allowed_ips}
+                """
+
+        qr = qrcode.QRCode()
+        qr.add_data(config)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        temp_file_path = temp_file.name
+        temp_file.close()  
+
+        img.save(temp_file_path)
+
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Wireguard Configuration QR Code")
+        layout = QtWidgets.QVBoxLayout(dialog)
+        
+        label = QtWidgets.QLabel(dialog)
+        pixmap = QtGui.QPixmap(temp_file_path)
+        label.setPixmap(pixmap)
+
+        layout.addWidget(label)
+
+        def delete_temp_file():
+            os.remove(temp_file_path)
+
+        dialog.accepted.connect(delete_temp_file)
+        dialog.rejected.connect(delete_temp_file)
+
+        dialog.exec_()
+
     def download_vpn_config(self):
         response = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,self.selected_vpn_peer['.id'])
 
@@ -212,11 +264,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         config = f"""
                 [Interface]
                 PrivateKey = {private_key}
+                Address = {allowed_ips}
 
                 [Peer]
                 PublicKey = {public_key}
                 AllowedIPs = {allowed_ips}
                 """
+        
         options = QtWidgets.QFileDialog.Options()
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Configuration File", peer_id + ".conf", "Configuration Files (*.conf);;All Files (*)", options=options)
 
@@ -499,6 +553,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_update_peer.setEnabled(True)
         self.btn_delete_peer.setEnabled(True)
         self.btn_conf_peer.setEnabled(True)
+        self.btn_qrcode_peer.setEnabled(True)
+
         row = item.row()
         vpn_id = self.vpnTable.item(row,0).text()
         self.selected_vpn_peer = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,vpn_id)
@@ -1123,6 +1179,14 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
         except Exception as e:
             print(f"Error populating interfaces: {e}")
 
+    def is_valid_ip_address(self, ip_address):
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}/32$'
+
+        if re.match(ip_pattern, ip_address):
+            return True
+        else:
+            return False
+        
     def save_configuration(self):
         interface = self.interfaces.currentText()
         pub_key = self.line_pub_key.text()
@@ -1141,6 +1205,14 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
             msg_box.exec_()
             return
 
+        if not self.is_valid_ip_address(alw_add):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx/32")
+            msg_box.exec_()
+            return
+        
         params = {
             "interface" : interface,
             "allowed-address" : alw_add,
