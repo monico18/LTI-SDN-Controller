@@ -46,7 +46,6 @@ def add_wireguard_peer(username, password, host, wireguard_peer_config):
     try:
         data = json.dumps(wireguard_peer_config)
         response = requests.put(f"https://{host}/rest/interface/wireguard/peers", auth=HTTPBasicAuth(username, password), data=data, verify=False)
-        print(response.json())
         return response.json()
 
     except Exception as e:
@@ -62,8 +61,8 @@ def edit_wireguard_peer(username, password, host, wireguard_peer_id, wireguard_p
 
 def delete_wireguard_peer(username, password, host, wireguard_peer_id):
     try:
-        response = requests.delete(f"https://{host}/rest/interface/wireguard/peers/{wireguard_peer_id}", auth=HTTPBasicAuth(username, password), verify=False)
-        return response.json()
+
+        requests.delete(f"https://{host}/rest/interface/wireguard/peers/{wireguard_peer_id}", auth=HTTPBasicAuth(username, password), verify=False)
 
     except Exception as e:
         print("Failed to delete wireguard peer:", str(e))

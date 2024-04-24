@@ -165,11 +165,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # VPN
         self.btn_update_peer.setEnabled(False)
         self.btn_delete_peer.setEnabled(False)
+        self.btn_conf_peer.setEnabled(False)
 
         self.vpnTable.clicked.connect(self.handler_vpnPeerTable_item_clicked)
         self.btn_add_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_update_peer.clicked.connect(self.open_vpn_peer_config_page)
         self.btn_delete_peer.clicked.connect(self.open_vpn_peer_config_page)
+        self.btn_conf_peer.clicked.connect(self.download_vpn_config)
 
         # Terminal 
         self.btn_Terminal.clicked.connect(self.open_terminal_page)
@@ -196,6 +198,42 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_cancel_node.hide()
 
         self.refresh_table()
+
+    def download_vpn_config(self):
+        response = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,self.selected_vpn_peer['.id'])
+
+        peer_id= response['.id']          
+        allowed_ips = response['allowed-address']
+        public_key = response['public-key']
+        private_key = response['private-key']
+
+        peer_id = peer_id.replace('*', '')
+
+        config = f"""
+                [Interface]
+                PrivateKey = {private_key}
+
+                [Peer]
+                PublicKey = {public_key}
+                AllowedIPs = {allowed_ips}
+                """
+        options = QtWidgets.QFileDialog.Options()
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Configuration File", peer_id + ".conf", "Configuration Files (*.conf);;All Files (*)", options=options)
+
+        if file_path:
+            try:
+
+                with open(file_path, 'w') as file:
+                    file.write(config)
+
+                msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "Success", f"Configuration saved to {file_path}", buttons=QtWidgets.QMessageBox.Ok)
+                msg_box.exec_()
+            except Exception as e:
+                msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical, "Error", f"Failed to save configuration file: {str(e)}", buttons=QtWidgets.QMessageBox.Ok)
+                msg_box.exec_()
+        else:
+            msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, "Warning", "No file selected. Configuration not saved.", buttons=QtWidgets.QMessageBox.Ok)
+            msg_box.exec_()
 
     def open_webpage(self):
         url = f"http://{self.ip_address}"
@@ -460,6 +498,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def handler_vpnPeerTable_item_clicked(self,item):
         self.btn_update_peer.setEnabled(True)
         self.btn_delete_peer.setEnabled(True)
+        self.btn_conf_peer.setEnabled(True)
         row = item.row()
         vpn_id = self.vpnTable.item(row,0).text()
         self.selected_vpn_peer = wireguard_queries.get_wireguard_peer(self.username,self.password,self.ip_address,vpn_id)
@@ -704,7 +743,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 for col in range(6):
                     self.dhcptable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
-
 
         except Exception as e:
             print(f"Error populating DHCP servers: {e}")
@@ -1064,6 +1102,7 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
         self.selected_vpn_peer = selected_vpn_peer
         self.line_dst_add.setText(selected_vpn_peer['allowed-address'])
         self.line_pub_key.setText(selected_vpn_peer['public-key'])
+        self.line_pr_key.setText(selected_vpn_peer['private-key'])
         mode_index = self.interfaces.findText(selected_vpn_peer['interface'])
         if mode_index != -1:
             self.interfaces.setCurrentIndex(mode_index)
@@ -1088,6 +1127,7 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
         interface = self.interfaces.currentText()
         pub_key = self.line_pub_key.text()
         alw_add = self.line_dst_add.text()
+        pr_key = self.line_pr_key.text()
 
         if self.radio_disable.isChecked():
             disabled = "true"
@@ -1105,6 +1145,7 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
             "interface" : interface,
             "allowed-address" : alw_add,
             "public-key" : pub_key,
+            "private-key" : pr_key,
             "disabled" : disabled
         }
         
