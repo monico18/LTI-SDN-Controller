@@ -4572,7 +4572,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.btn_page_1.setText(_translate("MainWindow", "Manage Routers"))
+        self.btn_page_1.setText(_translate("MainWindow", "Manage Nodes"))
         self.btn_page_2.setText(_translate("MainWindow", "VPN"))
         self.btn_page_3.setText(_translate("MainWindow", "Wireless"))
         self.btn_page_4.setText(_translate("MainWindow", "DNS"))
