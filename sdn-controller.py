@@ -400,7 +400,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def open_static_route_config_page(self):
         sender = self.sender()
         if sender == self.btn_delete_routes:
-            if self.selected_static_route['dynamic'] == "true":
+            mode_type = self.selected_static_route.get('dynamic', None)
+            if mode_type is not None and self.selected_static_route['dynamic'] == "true" :
                 msg_box = QtWidgets.QMessageBox()
                 msg_box.setIcon(QtWidgets.QMessageBox.Critical)
                 msg_box.setWindowTitle("Error")
@@ -411,11 +412,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 static_routes_queries.delete_static_route(self.username,self.password,self.ip_address,self.selected_static_route['.id'])
                 self.refresh_table_static_routes()
         if sender == self.btn_update_routes:
-            if self.selected_static_route['dynamic'] == "true":
+            mode_type = self.selected_static_route.get('dynamic', None)
+            if mode_type is not None and self.selected_static_route['dynamic'] == "true":
                 msg_box = QtWidgets.QMessageBox()
                 msg_box.setIcon(QtWidgets.QMessageBox.Critical)
                 msg_box.setWindowTitle("Error")
-                msg_box.setText("You cannot update a dynamically added static route")
+                msg_box.setText("You cannot delete a dynamically added static route")
                 msg_box.exec_()
                 return
             else:
@@ -840,6 +842,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 mac_address = interface.get('mac-address', '')
                 intType = interface.get('type', '')
 
+                if name == "lo":
+                    break
+
                 self.interfacesTable.insertRow(row)
                 self.interfacesTable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
                 self.interfacesTable.setItem(row, 1, QtWidgets.QTableWidgetItem(name))
@@ -1110,8 +1115,10 @@ class TerminalPage(QtWidgets.QMainWindow, Ui_Terminal):
         except paramiko.SSHException as e:
             self.text_output.setPlainText(f"SSH connection error: {str(e)}")
         except Exception as e:
-            self.text_output.setPlainText(f"An error occurred: {str(e)}")
+            if not isinstance(self.line_commands, QtWidgets.QLineEdit) or len(self.line_commands.text().strip()) > 0:
+                self.text_output.setPlainText(f"An error occurred: {str(e)}")
 
+                
     def send_command(self):
         command = self.line_commands.text().strip()
 
@@ -1390,9 +1397,21 @@ class IpAddPage(QtWidgets.QMainWindow, Ui_IpAddConfig):
         }
 
         if self.selected_ip_address is not None:
-            ip_address_queries.edit_ip_address(self.username,self.password,self.ip_address,self.selected_ip_address['.id'], params)
+            response = ip_address_queries.edit_ip_address(self.username,self.password,self.ip_address,self.selected_ip_address['.id'], params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
         else:
-            ip_address_queries.add_ip_address(self.username,self.password,self.ip_address,params)
+            response = ip_address_queries.add_ip_address(self.username,self.password,self.ip_address,params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
 
         self.configSaved.emit()
         self.close()
@@ -1432,10 +1451,18 @@ class DnsStaticPage(QtWidgets.QMainWindow, Ui_DnsConfig):
         if self.selected_dns_static['disabled'] == 'false' :
             self.radio_enable.setChecked(True) 
         else:
-            self.radio_disable.setChecked(True) 
-        mode_index = self.combo_mode.findText(selected_dns_static['type'])
-        if mode_index != -1:
-            self.combo_mode.setCurrentIndex(mode_index)
+            self.radio_disable.setChecked(True)
+        
+        mode_type = selected_dns_static.get('type', None)
+
+        if mode_type is not None:
+            mode_index = self.combo_mode.findText(mode_type)
+            if mode_index != -1:
+                self.combo_mode.setCurrentIndex(mode_index)
+            else:
+                self.combo_mode.setCurrentIndex(0)
+        else:
+            self.combo_mode.setCurrentIndex(0)
 
     def fill_dns_modes(self):
         dns_types = ["A","AAAA","CNAME","MX"]
@@ -1752,6 +1779,8 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
             
             for interface in interface_data:
                 interface_name = interface.get('name', '')
+                if interface_name == "lo":
+                    break
                 if interface.get('type', '') != "bridge":
                     if interface_name not in used_interfaces:
                         checkbox = QtWidgets.QCheckBox(interface_name)
@@ -2068,9 +2097,22 @@ class PoolPage(QtWidgets.QMainWindow, Ui_PoolConfig):
             'ranges' : ranges
         }
         if self.selected_pool is not None:
-            pool_queries.edit_pool(self.username,self.password,self.ip_address,self.selected_pool['.id'],params)
+            response = pool_queries.edit_pool(self.username,self.password,self.ip_address,self.selected_pool['.id'],params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
         else:
-            pool_queries.add_pool(self.username,self.password,self.ip_address,params)
+            response = pool_queries.add_pool(self.username,self.password,self.ip_address,params)
+            if response.status_code < 200 or response.status_code >= 300:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"{response.json()['detail']}")
+                msg_box.exec_()
+
         self.configSaved.emit()
         self.close() 
 
@@ -2091,7 +2133,7 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
         password = self.password.text()
 
         # Check if username and password are correct
-        if username == "123" and password == "123":
+        if username == "admin" and password == "admin":
             print("Login successful!")
             # Change to a specific page in the stacked widget
             self.hide()
@@ -2099,8 +2141,12 @@ class LoginPage(QtWidgets.QMainWindow, Ui_LoginPage):
             self.main_window.showMaximized()
             self.stacked_widget.setCurrentIndex(1)
         else:
-            QtWidgets.QMessageBox.critical(self, "Error", "Invalid username or password.")
-            print("Invalid username or password.")
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Invalid Username or Password.")
+            msg_box.exec_()
+            return
 
 def clear_db(engine, nodes):
     Session = sessionmaker(bind=engine)
