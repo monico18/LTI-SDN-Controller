@@ -572,4 +572,4 @@ class Ui_DnsConfig(object):
         self.radio_enable.setText(_translate("DnsConfig", "Enable"))
         self.radio_disable.setText(_translate("DnsConfig", "Disable"))
         self.btn_cancel_dns.setText(_translate("DnsConfig", "Cancel"))
-        self.label_2.setText(_translate("DnsConfig", "Mode"))
+        self.label_2.setText(_translate("DnsConfig", "Type"))

@@ -842,8 +842,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 mac_address = interface.get('mac-address', '')
                 intType = interface.get('type', '')
 
-                if name == "lo":
-                    break
 
                 self.interfacesTable.insertRow(row)
                 self.interfacesTable.setItem(row, 0, QtWidgets.QTableWidgetItem(int_id))
@@ -1046,6 +1044,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             nodes = result.fetchall()
         return nodes
 
+    def is_valid_ip_address(self,ip_address):
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+
+        if re.match(ip_pattern, ip_address):
+            return True
+        else:
+            return False
+        
     def edit_servers(self):
         new_server = self.line_servers.text()
         if self.radio_enable.isChecked():
@@ -1053,6 +1059,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             disabled = "false"
 
+
+        if not self.is_valid_ip_address(new_server):
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Please enter a valid IP address in the format xxx.xxx.xxx.xxx")
+                msg_box.exec_()
+                return
+        
         params = {
             'servers': new_server,
             'allow-remote-requests': disabled 
