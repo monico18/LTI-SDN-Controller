@@ -169,6 +169,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_delete_peer.setEnabled(False)
         self.btn_conf_peer.setEnabled(False)
         self.btn_qrcode_peer.setEnabled(False)
+        self.vpn_name = None
 
         self.vpnTable.clicked.connect(self.handler_vpnPeerTable_item_clicked)
         self.btn_add_peer.clicked.connect(self.open_vpn_peer_config_page)
@@ -724,6 +725,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.first_server = self.vpn_server[0]
 
                 self.line_name_vpn.setText(self.first_server['name'])
+                self.vpn_name = self.line_name_vpn.text()
                 self.line_port_vpn.setText(self.first_server['listen-port'])
 
                 if self.first_server['disabled'] == 'false':
@@ -874,7 +876,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.wirelesstable.setRowCount(0)
         self.securityTable.setRowCount(0)
 
+        if wireless_data.get('error', '') ==  400:
+            self.btn_page_3.setEnabled(False)
+            self.btn_wireless.setEnabled(False)
+            return
+        
         for row, wireless in enumerate(wireless_data):
+                wireless_exist = wireless.get('.id', None)
+                if wireless_exist is None:
+                    self.btn_page_3.setEnabled(False)
+                    self.btn_wireless.setEnabled(False)
+                    continue
+
                 int_id= wireless.get('.id', '')           
                 name = wireless.get('name', '')
                 ssid = wireless.get('ssid', '')
@@ -899,6 +912,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.wirelesstable.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
 
         for row, security in enumerate(security_data):
+            sec_exist = wireless.get('.id', None)
+            if wireless_exist is None:
+                continue
             int_id = security.get('.id', '')           
             name = security.get('name', '')
             auth = security.get('authentication-types', '')
@@ -1089,7 +1105,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             'disabled': disabled
         }
 
-        wireguard_queries.edit_wireguard_profile(self.username,self.password,self.ip_address,self.first_server['.id'], params)
+        if self.vpn_name is not None:
+            wireguard_queries.edit_wireguard_profile(self.username,self.password,self.ip_address,self.first_server['.id'], params)
+        else:
+            response = wireguard_queries.add_wireguard_profile(self.username,self.password,self.ip_address,params)
+            self.first_server = response
+            self.vpn_name = response.get('name','')
 
     def update_button_status(self):
         page_buttons = [self.btn_page_2, self.btn_page_3, self.btn_page_4,
@@ -1863,9 +1884,18 @@ class BridgePage(QtWidgets.QMainWindow,Ui_BridgeConfig):
             'name': name,
             'disabled': disabled
         }
+
         if self.selected_bridge == None :
             response = bridge_queries.add_bridge(self.username,self.password,self.ip_address, params)
             add_data = response
+
+            if add_data.get('error', '') ==  400:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("Name is already taken")
+                msg_box.exec_()
+                return
 
             for interface in self.selected_interfaces:
                 port_params= {
@@ -2039,15 +2069,23 @@ class DhcpPage(QtWidgets.QMainWindow, Ui_DhcpConfig):
         
         response_dns = dns_queries.get_dns(self.username,self.password,self.ip_address)
         dns_server = response_dns['servers']
-
-        params = {
-            'address-pool': address_pool_string_part,
-            'interface': interface,
-            'name': name,
-            'lease-time': time,
-            'disabled': disabled,
-            'server-address': dns_server
-        }
+        if dns_server == "":
+            params = {
+                'address-pool': address_pool_string_part,
+                'interface': interface,
+                'name': name,
+                'lease-time': time,
+                'disabled': disabled,
+            }
+        else :
+            params = {
+                'address-pool': address_pool_string_part,
+                'interface': interface,
+                'name': name,
+                'lease-time': time,
+                'disabled': disabled,
+                'server-address': dns_server
+            }
 
         if self.id != None:
             response = dhcp_queries.edit_dhcp_server(self.username,self.password,self.ip_address,self.id,params)

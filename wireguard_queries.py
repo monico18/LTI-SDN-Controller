@@ -11,6 +11,15 @@ def get_wireguard_profiles(username, password, host):
     except Exception as e:
         print("Failed to get wireguard profiles:", str(e))
 
+def add_wireguard_profile(username,password,host,wireguard_profile_config):
+    try:
+        data = json.dumps(wireguard_profile_config)
+        response = requests.put(f"https://{host}/rest/interface/wireguard", auth=HTTPBasicAuth(username, password), data=data, verify=False)
+        return response.json()
+
+    except Exception as e:
+        print("Failed to add wireguard peer:", str(e))
+
 def edit_wireguard_profile(username, password, host, wireguard_profile_id, wireguard_profile_config):
     try:
         data = {
