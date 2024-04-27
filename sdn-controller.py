@@ -28,6 +28,7 @@ from qrcode.image.pure import PymagingImage
 import json
 import socket
 import os
+import subprocess
 import tempfile
 import atexit
 import paramiko
@@ -210,12 +211,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         allowed_ips = response['allowed-address']
         public_key = response['public-key']
         private_key = response['private-key']
+        endpoint= response['endpoint-address']
+        port = response['endpoint-port']
 
-        config = f"""
+        if endpoint != "":
+            config = f"""
                 [Interface]
                 PrivateKey = {private_key}
                 Address = {allowed_ips}
 
+                [Peer]
+                PublicKey = {public_key}
+                AllowedIPs = {allowed_ips}
+                Endpoint = {endpoint}:{port}
+                """
+        else:
+            config = f"""
+                [Interface]
+                PrivateKey = {private_key}
+                Address = {allowed_ips}
 
                 [Peer]
                 PublicKey = {public_key}
@@ -259,10 +273,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         allowed_ips = response['allowed-address']
         public_key = response['public-key']
         private_key = response['private-key']
+        endpoint= response['endpoint-address']
+        port = response['endpoint-port']
 
         peer_id = peer_id.replace('*', '')
 
-        config = f"""
+        if endpoint != "":
+            config = f"""
+                [Interface]
+                PrivateKey = {private_key}
+                Address = {allowed_ips}
+
+                [Peer]
+                PublicKey = {public_key}
+                AllowedIPs = {allowed_ips}
+                Endpoint = {endpoint}:{port}
+                """
+        else:
+            config = f"""
                 [Interface]
                 PrivateKey = {private_key}
                 Address = {allowed_ips}
@@ -271,7 +299,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 PublicKey = {public_key}
                 AllowedIPs = {allowed_ips}
                 """
-        
+
         options = QtWidgets.QFileDialog.Options()
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Configuration File", peer_id + ".conf", "Configuration Files (*.conf);;All Files (*)", options=options)
 
@@ -386,13 +414,31 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def open_ip_add_config_page(self):
         sender = self.sender()
         if sender == self.btn_delete_IPAdd:
-            ip_address_queries.delete_ip_address(self.username,self.password,self.ip_address,self.selected_ip_address['.id'])
-            self.refresh_table_ip_address()
+            mode_type = self.selected_ip_address.get('dynamic', None)
+            if mode_type is not None and self.selected_ip_address['dynamic'] == "true" :
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("You cannot delete a dynamically added static route")
+                msg_box.exec_()
+                return
+            else:
+                ip_address_queries.delete_ip_address(self.username,self.password,self.ip_address,self.selected_ip_address['.id'])
+                self.refresh_table_ip_address()
         if sender == self.btn_update_IPAdd:
-            self.ip_address_page = IpAddPage(self.ip_address,self.username,self.password)
-            self.ip_address_page.configSaved.connect(self.handleConfigSaved)
-            self.ip_address_page.fill_ip_info(self.selected_ip_address)
-            self.ip_address_page.show()
+            mode_type = self.selected_ip_address.get('dynamic', None)
+            if mode_type is not None and self.selected_ip_address['dynamic'] == "true" :
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText("You cannot delete a dynamically added static route")
+                msg_box.exec_()
+                return
+            else:
+                self.ip_address_page = IpAddPage(self.ip_address,self.username,self.password)
+                self.ip_address_page.configSaved.connect(self.handleConfigSaved)
+                self.ip_address_page.fill_ip_info(self.selected_ip_address)
+                self.ip_address_page.show()
         if sender == self.btn_add_IPAdd:
             self.ip_address_page = IpAddPage(self.ip_address,self.username,self.password)
             self.ip_address_page.configSaved.connect(self.handleConfigSaved)
@@ -876,10 +922,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.wirelesstable.setRowCount(0)
         self.securityTable.setRowCount(0)
 
-        if wireless_data.get('error', '') ==  400:
-            self.btn_page_3.setEnabled(False)
-            self.btn_wireless.setEnabled(False)
-            return
+        if not isinstance(response,list):
+            if response.get('error', '') ==  400:
+                self.btn_page_3.setEnabled(False)
+                self.btn_wireless.setEnabled(False)
+                return
         
         for row, wireless in enumerate(wireless_data):
                 wireless_exist = wireless.get('.id', None)
@@ -1193,6 +1240,10 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
         self.password = password
         self.selected_vpn_peer = None
 
+        self.private_key, self.public_key = self.generate_wireguard_keys()
+        self.line_pr_key.setText(self.private_key)
+        self.line_pub_key.setText(self.public_key)
+
         self.btn_apply_peer.clicked.connect(self.save_configuration)
         self.populate_interfaces()
         self.btn_cancel_peer.clicked.connect(self.close)
@@ -1230,11 +1281,21 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
         else:
             return False
         
+    def generate_wireguard_keys(self):
+        private_key_process = subprocess.Popen(['wg', 'genkey'], stdout=subprocess.PIPE)
+        private_key, _ = private_key_process.communicate()
+        private_key = private_key.decode().strip()
+
+        public_key_process = subprocess.Popen(['wg', 'pubkey'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        public_key, _ = public_key_process.communicate(input=private_key.encode())
+        public_key = public_key.decode().strip()
+        return private_key, public_key
+
     def save_configuration(self):
         interface = self.interfaces.currentText()
-        pub_key = self.line_pub_key.text()
+        #pub_key = self.line_pub_key.text()
         alw_add = self.line_dst_add.text()
-        pr_key = self.line_pr_key.text()
+        #pr_key = self.line_pr_key.text()
 
         if self.radio_disable.isChecked():
             disabled = "true"
@@ -1256,18 +1317,49 @@ class VpnPeersPage(QtWidgets.QMainWindow, Ui_VPNPeersConfig):
             msg_box.exec_()
             return
         
-        params = {
-            "interface" : interface,
-            "allowed-address" : alw_add,
-            "public-key" : pub_key,
-            "private-key" : pr_key,
-            "disabled" : disabled
-        }
+        self.vpn_server = wireguard_queries.get_wireguard_profiles(self.username,self.password,self.ip_address)
+        if not self.vpn_server:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Please create a VPN Server first")
+            msg_box.exec_()
+            return
+        
+        self.first_server = self.vpn_server[0]
+        port =self.first_server['listen-port']
+
+        response = ip_address_queries.get_ip_addresses(self.username,self.password,self.ip_address)
+
+        if isinstance(response, list):
+            for entry in response:
+                if entry.get('interface') == 'ether1' and entry.get('dynamic') == 'true':
+                    ip = entry['address'].split('/')[0]
+                    params = {
+                        "interface" : interface,
+                        "allowed-address" : alw_add,
+                        "public-key" : self.public_key,
+                        "private-key" : self.private_key,
+                        "endpoint-address": ip,
+                        "endpoint-port": port,
+                        "disabled" : disabled
+                    }
+                    break
+                else:
+                    params = {
+                    "interface" : interface,
+                    "allowed-address" : alw_add,
+                    "public-key" : self.public_key,
+                    "private-key" : self.private_key,
+                    "endpoint-port": port,
+                    "disabled" : disabled
+                }
         
         if self.selected_vpn_peer is not None:
             wireguard_queries.edit_wireguard_peer(self.username,self.password,self.ip_address,self.selected_vpn_peer['.id'], params)
         else:
-            wireguard_queries.add_wireguard_peer(self.username,self.password,self.ip_address,params)
+            response = wireguard_queries.add_wireguard_peer(self.username,self.password,self.ip_address,params)
+            print(response)
 
         self.configSaved.emit()
         self.close()
